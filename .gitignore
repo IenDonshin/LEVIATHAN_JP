@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# SQLite
+*.sqlite3
+db.sqlite3
+
+# Virtual environments
+.venv/
+venv/
+.env
+*.env
+
+# IDEs and editors
+.vscode/
+.idea/
+
+# System
+.DS_Store
+Thumbs.db
+*~
+
+# Logs
+*.log
+
+# oTree generated
+_static/
+_static_root/
+html/
+__temp*/
+__temp_migrations__/
+_bots*
+*.otreezip
+*.coverage
+htmlcov/
+
+# Deployment
+Procfile
