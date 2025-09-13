@@ -1,0 +1,40 @@
+{% extends "global/Page.html" %}
+{% load otree %}
+
+{% block title %}
+    实验结束 - 最终结果
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h4>感谢您的参与！</h4>
+        
+        <div class="alert alert-success">
+            <h5>您的总收益：{{ total_payoff }}</h5>
+        </div>
+        
+        <h5>各轮次详情：</h5>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>轮次</th>
+                    <th>您的贡献</th>
+                    <th>本轮收益</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for round in rounds_data %}
+                <tr>
+                    <td>第 {{ round.round }} 轮</td>
+                    <td>{{ round.contribution }}</td>
+                    <td>{{ round.payoff }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% next_button %}
+{% endblock %}

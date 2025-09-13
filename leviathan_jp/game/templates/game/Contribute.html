@@ -1,0 +1,29 @@
+{% extends "global/Page.html" %}
+{% load otree %}
+
+{% block title %}
+    第 {{ round_number }} 轮 - 贡献决策
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h5>您的初始资金：{{ endowment }}</h5>
+        
+        <p>请决定您要向公共账户贡献多少金额：</p>
+        
+        {% formfield player.contribution %}
+        
+        <div class="alert alert-warning mt-3">
+            <strong>提醒：</strong>
+            <ul>
+                <li>您贡献的金额将进入公共账户</li>
+                <li>您保留的金额 = {{ endowment }} - 您的贡献</li>
+                <li>公共账户的总金额将乘以{{ C.MULTIPLIER }}后平均分给所有人</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+{% next_button %}
+{% endblock %}

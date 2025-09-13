@@ -1,0 +1,34 @@
+{% extends "global/Page.html" %}
+{% load otree %}
+
+{% block title %}
+    实验说明
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h4>欢迎参加公共物品博弈实验</h4>
+        
+        <p>在本实验中，您将被随机分配到一个{{ C.PLAYERS_PER_GROUP }}人小组。</p>
+        
+        <h5>实验规则：</h5>
+        <ol>
+            <li>每轮您将获得<strong>{{ C.ENDOWMENT }}</strong>的初始资金</li>
+            <li>您需要决定向公共账户贡献多少（0 到 {{ C.ENDOWMENT }}）</li>
+            <li>您保留的金额将直接成为您的私人收益</li>
+            <li>所有组员贡献的总金额将乘以<strong>{{ C.MULTIPLIER }}</strong></li>
+            <li>公共账户的总额将平均分配给所有{{ C.PLAYERS_PER_GROUP }}名组员</li>
+        </ol>
+        
+        <h5>收益计算：</h5>
+        <div class="alert alert-info">
+            您的收益 = 保留的金额 + (公共账户总额 × {{ C.MULTIPLIER }} ÷ {{ C.PLAYERS_PER_GROUP }})
+        </div>
+        
+        <p>实验将进行<strong>{{ C.NUM_ROUNDS }}轮</strong>，每轮您都会与相同的组员互动。</p>
+    </div>
+</div>
+
+{% next_button %}
+{% endblock %}
