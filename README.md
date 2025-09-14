@@ -1,1 +1,17 @@
-Build the Leviathan (Power Transfer Game) in Japan
+# Build the Leviathan (Power Transfer Game) in Japan
+
+## How to Run the Project
+
+1. Clone the repository to your local machine.
+
+2. Start the project from the command line:
+
+    ```    c
+    otree devserver 0.0.0.0:8000
+    ```
+
+3. Access the experiment:
+
+    - Make sure your device is connected to the same local network (LAN) as the PC running the project.
+
+    - Open a browser on that device and enter the IP address of the PC running the project using the http protocol.
