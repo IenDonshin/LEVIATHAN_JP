@@ -1,0 +1,72 @@
+{{ block title }}
+    ゲーム説明
+{{ endblock }}
+
+{{ block content }}
+    <div class="card bg-light">
+        <div class="card-body">
+            <h3>実験へようこそ</h3>
+            
+            <p>
+                この実験は全{{ num_rounds }}ラウンドで構成されています。
+                あなたは{{ group_size }}人のグループに属しています。
+            </p>
+
+            <h4>ゲームの流れ</h4>
+            <ol>
+                <li>各ラウンドの開始時に、各プレイヤーは{{ endowment }}実験円を受け取ります</li>
+                <li>この{{ endowment }}実験円を「個人口座」と「公共口座」に配分してください</li>
+                <li>公共口座に入れた金額の合計は{{ efficiency_factor }}倍され、グループメンバー全員に均等に分配されます</li>
+                <li>個人口座に残した金額はそのままあなたの収益となります</li>
+            </ol>
+
+            <h4>収益の計算</h4>
+            <p>各ラウンドのあなたの収益は以下のように計算されます：</p>
+            <div class="alert alert-info">
+                <strong>収益 = 個人口座の金額 + (公共口座の総額 × {{ efficiency_factor }} ÷ {{ group_size }})</strong>
+            </div>
+
+            <h4>懲罰メカニズム</h4>
+            <p>
+                各ラウンドで貢献額を決定した後、他のプレイヤーに対して懲罰を与えることができます。
+            </p>
+            <ul>
+                <li>各プレイヤーは初期に<strong>{{ initial_punishment_endowment }}</strong>ポイントの懲罰権を持っています</li>
+                <li>1ポイントの懲罰権を使用すると、相手に<strong>{{ punishment_rate }}</strong>実験円の損失を与えます</li>
+                <li>懲罰を与えるには1ポイントの懲罰権が必要です（コスト：1実験円）</li>
+            </ul>
+
+            {{ if treatment == 'transfer_free' or treatment == 'transfer_cost' }}
+                <h4>懲罰権の譲渡</h4>
+                <p>
+                    この実験では、懲罰権を他のプレイヤーに譲渡することができます。
+                </p>
+                <ul>
+                    <li>懲罰権は{{ punishment_transfer_unit }}ポイント単位で譲渡可能です</li>
+                    {{ if treatment == 'transfer_cost' }}
+                        <li>譲渡には<strong>コストがかかります</strong>：{{ punishment_transfer_unit }}ポイントあたり{{ punishment_transfer_cost_rate }}実験円</li>
+                    {{ else }}
+                        <li>譲渡に<strong>コストはかかりません</strong></li>
+                    {{ endif }}
+                    <li>譲渡された懲罰権は次のラウンドから使用可能です</li>
+                </ul>
+            {{ endif }}
+
+            <h4>重要な注意事項</h4>
+            <ul>
+                <li>すべての決定は同時に行われます</li>
+                <li>他のプレイヤーの決定を見る前に、あなたの決定を行ってください</li>
+                <li>各ラウンドの結果は、全員の決定後に表示されます</li>
+                {{ if treatment == 'fixed' }}
+                    <li>懲罰権の保有量は全ラウンドを通じて一定です</li>
+                {{ else }}
+                    <li>使用した懲罰権は減少し、譲渡された懲罰権は増加します</li>
+                {{ endif }}
+            </ul>
+
+            <p class="text-center mt-4">
+                <button class="btn btn-primary">ゲームを開始</button>
+            </p>
+        </div>
+    </div>
+{{ endblock }}

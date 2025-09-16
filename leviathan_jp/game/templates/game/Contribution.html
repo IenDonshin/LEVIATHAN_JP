@@ -1,0 +1,90 @@
+{% extends "global/Page.html" %}
+{% load otree %}
+
+{% block title %}
+    第{{ round_number }}ラウンド - 貢献決定
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">貢献決定</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <p><strong>あなたのコード：</strong>{{ player_code }}</p>
+                        <p><strong>今ラウンドの初期資金：</strong>{{ endowment }}通貨単位</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contribution" class="h5">
+                            公共口座への貢献額を入力してください
+                        </label>
+                        <div class="input-group">
+                            {% formfield player.contribution %}
+                            <div class="input-group-append">
+                                <span class="input-group-text">通貨単位</span>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">
+                            0から{{ endowment }}までの整数を入力できます
+                        </small>
+                    </div>
+                    
+                    <div class="alert alert-secondary mt-3">
+                        <strong>ヒント：</strong>
+                        <ul class="mb-0">
+                            <li>保留額 = {{ endowment }} - あなたの貢献</li>
+                            <li>公共口座の総額は1.6倍されて均等分配されます</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            {% if history %}
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h4 class="mb-0">履歴</h4>
+                </div>
+                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>ラウンド</th>
+                                <th>貢献</th>
+                                <th>ラウンド利得</th>
+                                <th>累計利得</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for h in history %}
+                            <tr>
+                                <td>{{ h.round }}</td>
+                                <td>{{ h.contribution|floatformat:0}}</td>
+                                <td>{{ h.round_payoff|floatformat:1}}</td>
+                                <td>{{ h.cumulative_payoff|floatformat:1}}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <h5>第1ラウンド</h5>
+                <p>これは実験の第1ラウンドです。まだ履歴はありません。</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="mt-3">
+        <button class="btn btn-primary">貢献を確定</button>
+    </div>
+</div>
+{% endblock %}

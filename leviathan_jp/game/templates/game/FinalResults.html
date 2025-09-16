@@ -2,39 +2,137 @@
 {% load otree %}
 
 {% block title %}
-    实验结束 - 最终结果
+    実験終了 - 最終結果
 {% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-body">
-        <h4>感谢您的参与！</h4>
-        
-        <div class="alert alert-success">
-            <h5>您的总收益：{{ total_payoff }}</h5>
+<div class="container">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h3 class="mb-0">実験終了 - 最終結果</h3>
         </div>
-        
-        <h5>各轮次详情：</h5>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>轮次</th>
-                    <th>您的贡献</th>
-                    <th>本轮收益</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for round in rounds_data %}
-                <tr>
-                    <td>第 {{ round.round }} 轮</td>
-                    <td>{{ round.contribution }}</td>
-                    <td>{{ round.payoff }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="card-body">
+            <!-- 最终收益 -->
+            <div class="alert alert-success text-center">
+                <h2>あなたの最終利得</h2>
+                <h1 class="display-3">{{ final_payoff|floatformat:1 }}</h1>
+                <p class="h4">通貨単位</p>
+            </div>
+            
+            <!-- 统计摘要 -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6>総貢献額</h6>
+                            <h4>{{ total_contribution|floatformat:0 }}</h4>
+                            <small>平均: {{ avg_contribution|floatformat:1 }}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6>与えた懲罰総量</h6>
+                            <h4>{{ total_punishment_sent|floatformat:0 }}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6>受けた懲罰総量</h6>
+                            <h4 class="text-danger">{{ total_punishment_received|floatformat:0 }}</h4>
+                        </div>
+                    </div>
+                </div>
+                {% if treatment in 'transfer_free,transfer_cost' %}
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h6>譲渡した懲罰権総量</h6>
+                            <h4>{{ total_power_transferred|floatformat:1 }}</h4>
+                            {% if treatment == 'transfer_cost' %}
+                            <small>総コスト: {{ total_transfer_cost|floatformat:1 }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- 最终排名 -->
+            <h5>グループ内最終順位</h5>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>順位</th>
+                        <th>プレイヤー</th>
+                        <th>最終利得</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rank_data in ranking %}
+                    <tr {% if rank_data.is_me %}class="table-primary"{% endif %}>
+                        <td>{{ rank_data.rank }}</td>
+                        <td>
+                            {{ rank_data.player_code }}
+                            {% if rank_data.is_me %}<span class="badge badge-primary">あなた</span>{% endif %}
+                        </td>
+                        <td>{{ rank_data.final_payoff|floatformat:1 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <!-- 详细历史 -->
+            <div class="mt-4">
+                <button class="btn btn-info" data-toggle="collapse" data-target="#historyDetails">
+                    詳細履歴を表示
+                </button>
+                <div class="collapse mt-3" id="historyDetails">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>ラウンド</th>
+                                <th>貢献</th>
+                                <th>貢献利得</th>
+                                <th>与えた懲罰</th>
+                                <th>受けた懲罰</th>
+                                {% if treatment in 'transfer_free,transfer_cost' %}
+                                <th>譲渡</th>
+                                <th>受取</th>
+                                {% endif %}
+                                <th>ラウンド利得</th>
+                                <th>累計利得</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for h in history %}
+                            <tr>
+                                <td>{{ h.round }}</td>
+                                <td>{{ h.contribution|floatformat:0 }}</td>
+                                <td>{{ h.payoff_from_contribution|floatformat:1 }}</td>
+                                <td>{{ h.punishment_sent|floatformat:0 }}</td>
+                                <td>{{ h.punishment_received|floatformat:0 }}</td>
+                                {% if treatment in 'transfer_free,transfer_cost' %}
+                                <td>{{ h.power_transferred_out|floatformat:1 }}</td>
+                                <td>{{ h.power_received|floatformat:1 }}</td>
+                                {% endif %}
+                                <td>{{ h.round_payoff|floatformat:1 }}</td>
+                                <td>{{ h.cumulative_payoff|floatformat:1 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="alert alert-info mt-4">
+                <h5>実験へのご参加ありがとうございました</h5>
+                <p>実験が終了しました。画面の指示に従ってください。</p>
+            </div>
+        </div>
     </div>
 </div>
-
-{% next_button %}
 {% endblock %}
