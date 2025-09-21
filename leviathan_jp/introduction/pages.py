@@ -38,17 +38,27 @@ class Test(Page): # 之前可能是 TestFixed
         if treatment == 'fixed':
             if values['q1_fixed'] != player.session.config['endowment'] or \
                values['q2_fixed'] != player.session.config['contribution_multiplier']:
-                return f"固定惩罚条件下的测试答案不正确。初始禀赋是{player.session.config['endowment']}，公共池乘数是{player.session.config['contribution_multiplier']}，请重新尝试。"
+                return (
+                    f"固定条件の解答が正しくありません。初期保有額は{player.session.config['endowment']}、"
+                    f"公共財の乗数は{player.session.config['contribution_multiplier']}です。もう一度確認してください。"
+                )
         elif treatment == 'transfer_free':
             # 假设惩罚权可以转移，转移成本为0，最大可转移点数为初始惩罚点数
             if values['q1_transfer_free'] != 'yes' or \
                values['q2_transfer_free'] != 0 or \
                values['q3_transfer_free'] != player.session.config['deduction_points']:
-                return f"无成本转移条件下的测试答案不正确。惩罚权可以转移，转移成本为0，最大可转移点数为{player.session.config['deduction_points']}，请重新尝试。"
+                return (
+                    f"無コスト譲渡条件の解答が正しくありません。懲罰権は譲渡可能で、譲渡コストは0、"
+                    f"最大譲渡ポイントは{player.session.config['deduction_points']}です。もう一度確認してください。"
+                )
         elif treatment == 'transfer_cost':
             # 假设惩罚权可以转移，转移成本率为1，需要支付成本
             if values['q1_transfer_cost'] != player.session.config['punishment_transfer_cost_rate'] or \
                values['q2_transfer_cost'] != 'yes':
-                return f"有成本转移条件下的测试答案不正确。转移成本率为{player.session.config['punishment_transfer_cost_rate']}，转移惩罚需要支付成本，请重新尝试。"
+                return (
+                    f"コストあり譲渡条件の解答が正しくありません。譲渡コスト率は"
+                    f"{player.session.config['punishment_transfer_cost_rate']}であり、懲罰を譲渡する際にはコストが必要です。"
+                    "もう一度確認してください。"
+                )
 
 page_sequence = [Introduction, Test]

@@ -14,7 +14,8 @@
             <p class="mb-0">使用した罰ポイントの合計: <strong><span id="used-points">0</span></strong> / {{ session.config.deduction_points }}</p>
         </div>
         {% if history_rounds %}
-        <button type="button" class="btn btn-info" data-toggle="modal" data-target="#historyModal">
+        <button type="button" class="btn btn-info" data-toggle="modal" data-bs-toggle="modal"
+                data-target="#historyModal" data-bs-target="#historyModal" data-history-modal="true">
             <i class="fas fa-history"></i> 全履歴を見る
         </button>
         {% endif %}

@@ -2,6 +2,24 @@
 {# This is a reusable template for the history modal #}
 {% load otree static %}
 
+<style>
+    .custom-history-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1040;
+    }
+
+    #historyModal.manual-show {
+        display: block;
+        z-index: 1050;
+    }
+
+    body.modal-open {
+        overflow: hidden;
+    }
+</style>
+
 <div class="modal fade" id="historyModal" tabindex="-1" role="dialog" aria-labelledby="historyModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
@@ -83,3 +101,97 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var modalEl = document.getElementById('historyModal');
+    if (!modalEl) {
+        return;
+    }
+
+    var triggers = document.querySelectorAll('[data-history-modal="true"]');
+    if (!triggers.length) {
+        return;
+    }
+
+    var closeButtons = modalEl.querySelectorAll('[data-dismiss="modal"], [data-history-close="true"]');
+    var backdropEl = null;
+
+    function createBackdrop() {
+        backdropEl = document.createElement('div');
+        backdropEl.className = 'custom-history-backdrop';
+        document.body.appendChild(backdropEl);
+    }
+
+    function removeBackdrop() {
+        if (backdropEl && backdropEl.parentNode) {
+            backdropEl.parentNode.removeChild(backdropEl);
+        }
+        backdropEl = null;
+    }
+
+    function showModal(event) {
+        if (event) {
+            event.preventDefault();
+        }
+
+        if (window.bootstrap && window.bootstrap.Modal) {
+            var modalInstance = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+            modalInstance.show();
+            return;
+        }
+
+        var jq = window.jQuery || window.$;
+        if (jq && typeof jq(modalEl).modal === 'function') {
+            jq(modalEl).modal('show');
+            return;
+        }
+
+        if (modalEl.classList.contains('manual-show')) {
+            return;
+        }
+
+        modalEl.classList.add('manual-show', 'show');
+        modalEl.removeAttribute('aria-hidden');
+        createBackdrop();
+        document.body.classList.add('modal-open');
+    }
+
+    function hideModal(event) {
+        if (event) {
+            event.preventDefault();
+        }
+
+        if (window.bootstrap && window.bootstrap.Modal) {
+            var modalInstance = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+            modalInstance.hide();
+            return;
+        }
+
+        var jq = window.jQuery || window.$;
+        if (jq && typeof jq(modalEl).modal === 'function') {
+            jq(modalEl).modal('hide');
+            return;
+        }
+
+        modalEl.classList.remove('manual-show', 'show');
+        modalEl.setAttribute('aria-hidden', 'true');
+        removeBackdrop();
+        document.body.classList.remove('modal-open');
+    }
+
+    triggers.forEach(function (btn) {
+        btn.addEventListener('click', showModal);
+    });
+
+    closeButtons.forEach(function (btn) {
+        btn.addEventListener('click', hideModal);
+    });
+
+    modalEl.addEventListener('click', function (event) {
+        if (event.target === modalEl) {
+            hideModal(event);
+        }
+    });
+});
+</script>

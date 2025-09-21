@@ -1,8 +1,62 @@
 # game/pages.py
 
-from ._builtin import Page, WaitPage # type: ignore
+from otree.api import Page, WaitPage
+
 from .models import Constants
 from otree.api import Currency as c # 确保 Currency 被导入
+
+
+def build_history_rounds(player):
+    """Collect per-round history data for templates."""
+    session = player.session
+    endowment = session.config.get('endowment', 0)
+    endowment_currency = c(endowment)
+    rounds = []
+
+    for prev in player.in_previous_rounds():
+        group = prev.group
+        members = group.get_players()
+
+        player_entries = []
+        for member in members:
+            total_sent = 0
+            for other in members:
+                if other.id_in_group == member.id_in_group:
+                    continue
+                field_name = f'punish_p{other.id_in_group}'
+                total_sent += getattr(member, field_name, 0) or 0
+
+            player_entries.append(
+                dict(
+                    id_in_group=member.id_in_group,
+                    contribution=member.contribution,
+                    endowment=endowment_currency,
+                    punishment_sent_total=total_sent,
+                )
+            )
+
+        matrix_rows = []
+        for victim in members:
+            cells = []
+            for giver in members:
+                is_self = giver.id_in_group == victim.id_in_group
+                amount = None
+                if not is_self:
+                    field_name = f'punish_p{victim.id_in_group}'
+                    amount = getattr(giver, field_name, 0) or 0
+                cells.append(dict(is_self=is_self, amount=amount))
+            matrix_rows.append(dict(victim_id=victim.id_in_group, cells=cells))
+
+        rounds.append(
+            dict(
+                round_number=prev.round_number,
+                players=player_entries,
+                matrix_rows=matrix_rows,
+                has_punishment=prev.round_number > 1,
+            )
+        )
+
+    return rounds
 
 # =============================================================================
 # CLASS: Contribution
@@ -11,29 +65,56 @@ class Contribution(Page):
     form_model = 'player'
     form_fields = ['contribution']
 
-    def vars_for_template(self):
+    @staticmethod
+    def vars_for_template(player):
         # 为了 _HistoryModal.html 中的 player.in_all_rounds 迭代器能正确获取到 id_range
-        # otree 5.x 以后，get_attribute 可能需要 id_range 辅助
         id_range = list(range(1, Constants.players_per_group + 1))
         return dict(
-            history=self.player.in_previous_rounds(),
-            id_range=id_range # 传递 id_range 到模板
+            history=player.in_previous_rounds(),
+            id_range=id_range,
+            C=Constants,
+            history_rounds=build_history_rounds(player),
         )
 
 # =============================================================================
 # CLASS: ContributionWaitPage
 # =============================================================================
 class ContributionWaitPage(WaitPage):
-    after_all_players_arrive = 'set_group_contribution'
+    @staticmethod
+    def after_all_players_arrive(group):
+        group.set_group_contribution()
 
 # =============================================================================
 # CLASS: ContributionResult
 # =============================================================================
 class ContributionResult(Page):
-    def vars_for_template(self):
+    @staticmethod
+    def vars_for_template(player):
+        session = player.session
+        endowment = session.config['endowment']
+        endowment_currency = c(endowment)
+        share = player.group.individual_share
+
+        players_data = []
+        for member in player.group.get_players():
+            contribution = member.contribution
+            received_from_public = share
+            kept_amount = endowment_currency - contribution
+            current_total = kept_amount + share
+
+            players_data.append(
+                dict(
+                    player=member,
+                    contribution=contribution,
+                    received_from_public=received_from_public,
+                    current_total=current_total,
+                )
+            )
+
         return dict(
-            kept=c(self.session.config['endowment']) - self.player.contribution,
-            share=self.group.individual_share
+            players_data=players_data,
+            endowment=endowment_currency,
+            share=share,
         )
 
 # =============================================================================
@@ -41,77 +122,129 @@ class ContributionResult(Page):
 # =============================================================================
 class Punishment(Page):
     form_model = 'player'
-    
-    def get_form_fields(self):
-        # 根据小组人数动态生成表单字段
-        return [f'punish_p{i}' for i in range(1, Constants.players_per_group + 1)]
 
-    def is_displayed(self):
-        return self.round_number > 1
+    @staticmethod
+    def get_form_fields(player):
+        return [
+            f'punish_p{i}'
+            for i in range(1, Constants.players_per_group + 1)
+            if i != player.id_in_group
+        ]
 
-    def vars_for_template(self):
-        # 传递 id_range 到模板
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number > 1
+
+    @staticmethod
+    def vars_for_template(player):
         id_range = list(range(1, Constants.players_per_group + 1))
         return dict(
-            players_contribution=self.group.get_players(),
-            deduction_points=self.session.config['deduction_points'],
-            id_range=id_range # 传递 id_range 到模板
+            players_contribution=player.group.get_players(),
+            deduction_points=player.session.config['deduction_points'],
+            id_range=id_range,
+            history_rounds=build_history_rounds(player),
         )
-    
-    def error_message(self, values):
+
+    @staticmethod
+    def error_message(player, values):
         total_punishment = 0
         for i in range(1, Constants.players_per_group + 1):
             field_name = f'punish_p{i}'
             if field_name in values and values[field_name] is not None:
                 total_punishment += values[field_name]
-        
-        if total_punishment > self.session.config['deduction_points']:
-            return f"您送出的总惩罚点数不能超过 {self.session.config['deduction_points']}。"
+
+        if total_punishment > player.session.config['deduction_points']:
+            return f"您送出的总惩罚点数不能超过 {player.session.config['deduction_points']}。"
 
 # =============================================================================
 # CLASS: PunishmentWaitPage
 # =============================================================================
 class PunishmentWaitPage(WaitPage):
-    def is_displayed(self):
-        return self.round_number > 1
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number > 1
 
-    after_all_players_arrive = 'set_payoff'
+    @staticmethod
+    def after_all_players_arrive(group):
+        group.set_payoff()
 
 # =============================================================================
 # CLASS: PunishmentResult
 # =============================================================================
 class PunishmentResult(Page):
-    def is_displayed(self):
-        return self.round_number > 1
-        
-    def vars_for_template(self):
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number > 1
+
+    @staticmethod
+    def vars_for_template(player):
         id_range = list(range(1, Constants.players_per_group + 1))
-        cumulative_payoff = self.player.participant.vars.get('cumulative_payoff', c(0))
-        
-        # 贡献阶段的利得 = E - c_i + (m/n)Σc_j
-        payoff_from_contribution = c(self.session.config['endowment']) - self.player.contribution + self.group.individual_share
-        
+        session = player.session
+        endowment = session.config['endowment']
+        endowment_currency = c(endowment)
+        share = player.group.individual_share
+
+        cumulative_payoff = player.participant.vars.get('cumulative_payoff', c(0))
+        payoff_from_contribution = endowment_currency - player.contribution + share
+
+        players = player.group.get_players()
+
+        players_summary = []
+        for member in players:
+            total_sent = 0
+            for other in players:
+                if other.id_in_group == member.id_in_group:
+                    continue
+                field_name = f'punish_p{other.id_in_group}'
+                total_sent += getattr(member, field_name, 0) or 0
+
+            players_summary.append(
+                dict(
+                    id_in_group=member.id_in_group,
+                    contribution=member.contribution,
+                    endowment=endowment_currency,
+                    punishment_sent_total=total_sent,
+                )
+            )
+
+        matrix_rows = []
+        for victim in players:
+            cells = []
+            for giver in players:
+                is_self = giver.id_in_group == victim.id_in_group
+                amount = None
+                if not is_self:
+                    field_name = f'punish_p{victim.id_in_group}'
+                    amount = getattr(giver, field_name, 0) or 0
+                cells.append(dict(is_self=is_self, amount=amount))
+            matrix_rows.append(dict(victim_id=victim.id_in_group, cells=cells))
+
         return dict(
             payoff_from_contribution=payoff_from_contribution,
             cumulative_payoff=cumulative_payoff,
-            id_range=id_range # 传递 id_range 到模板
+            id_range=id_range,
+            players_summary=players_summary,
+            matrix_rows=matrix_rows,
+            matrix_headers=[member.id_in_group for member in players],
         )
 
 # =============================================================================
 # CLASS: FinalResult (在 game App 中)
 # =============================================================================
 class FinalResult(Page):
-    def is_displayed(self):
-        return self.round_number == Constants.num_rounds # 确保只在最后一轮显示
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number == Constants.num_rounds
 
-    def vars_for_template(self):
-        # 这里的 self.group.get_players() 是指当前（最后一轮）组的玩家
-        # 他们的 participant.payoff 已经包含了累计总收益
-        final_payoff_jpy = self.participant.payoff_plus_participation_fee()
-        
+    @staticmethod
+    def vars_for_template(player):
+        final_payoff_jpy = player.participant.payoff_plus_participation_fee()
+
         return {
-            'players': sorted(self.group.get_players(), key=lambda p: p.id_in_group),
-            'final_payoff_jpy': final_payoff_jpy
+            'players': sorted(player.group.get_players(), key=lambda p: p.id_in_group),
+            'final_payoff_jpy': final_payoff_jpy,
+            'C': Constants,
+            'Constants': Constants,
         }
 
 

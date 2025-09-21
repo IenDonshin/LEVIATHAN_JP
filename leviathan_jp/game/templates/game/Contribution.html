@@ -23,7 +23,8 @@
         
         <div class="d-flex justify-content-between align-items-center mt-3">
             {% if history_rounds %}
-            <button type="button" class="btn btn-info" data-toggle="modal" data-target="#historyModal">
+            <button type="button" class="btn btn-info" data-toggle="modal" data-bs-toggle="modal"
+                    data-target="#historyModal" data-bs-target="#historyModal" data-history-modal="true">
                 <i class="fas fa-history"></i> 全履歴を見る
             </button>
             {% else %}
@@ -36,7 +37,7 @@
 </div>
 
 {# --- 履歴モーダルをインクルード --- #}
-{% if player.round_number > 1 %}
+{% if player.round_number > 1 and history_rounds %}
     {% include "game/_HistoryModal.html" %}
 {% endif %}
 
