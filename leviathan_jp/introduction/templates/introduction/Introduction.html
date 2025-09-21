@@ -1,0 +1,54 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    実験の紹介
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <div class="card-body">
+        {% if treatment_name == 'fixed' %}
+            <p><strong>这是固定惩罚权实验的介绍内容。</strong></p>
+            <p>在这个实验中，玩家的惩罚点数是固定的，不能进行转移。</p>
+            <ul>
+                <li>每轮初始资金：{{ session.config.endowment }} MU</li>
+                <li>公共池乘数：{{ session.config.contribution_multiplier }}</li>
+                <li>初始惩罚点数：{{ session.config.deduction_points }} 点</li>
+                <li>惩罚成本：{{ session.config.punishment_cost }} MU/点</li>
+                <li>惩罚效果：{{ session.config.punishment_effectiveness }} MU/点</li>
+            </ul>
+        {% elif treatment_name == 'transfer_free' %}
+            <p><strong>这是无成本转移惩罚权实验的介绍内容。</strong></p>
+            <p>在这个实验中，玩家可以将自己的惩罚点数无成本地转移给其他玩家。</p>
+            <ul>
+                <li>每轮初始资金：{{ session.config.endowment }} MU</li>
+                <li>公共池乘数：{{ session.config.contribution_multiplier }}</li>
+                <li>初始惩罚点数：{{ session.config.deduction_points }} 点</li>
+                <li>惩罚权转移：允许，且无成本</li>
+                <li>惩罚成本：{{ session.config.punishment_cost }} MU/点</li>
+                <li>惩罚效果：{{ session.config.punishment_effectiveness }} MU/点</li>
+            </ul>
+        {% elif treatment_name == 'transfer_cost' %}
+            <p><strong>这是有成本转移惩罚权实验的介绍内容。</strong></p>
+            <p>在这个实验中，玩家可以将自己的惩罚点数转移给其他玩家，但需要支付一定的转移成本。</p>
+            <ul>
+                <li>每轮初始资金：{{ session.config.endowment }} MU</li>
+                <li>公共池乘数：{{ session.config.contribution_multiplier }}</li>
+                <li>初始惩罚点数：{{ session.config.deduction_points }} 点</li>
+                <li>惩罚权转移：允许，转移成本率为 {{ session.config.punishment_transfer_cost_rate }}</li>
+                <li>惩罚成本：{{ session.config.punishment_cost }} MU/点</li>
+                <li>惩罚效果：{{ session.config.punishment_effectiveness }} MU/点</li>
+            </ul>
+        {% else %}
+            <p>这是一个默认的实验介绍页面。</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="text-right mt-3">
+    {% next_button %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    ルールの理解度テスト
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <div class="card-body">
+        <p>
+            这是一个规则测试页面。请仔细阅读并回答以下问题，以确保您理解了实验规则。
+        </p>
+
+        <form method="post">
+
+            {% if treatment_name == 'fixed' %}
+                {% include 'introduction/_TestFixed.html' %}
+            {% elif treatment_name == 'transfer_free' %}
+                {% include 'introduction/_TestTransferFree.html' %}
+            {% elif treatment_name == 'transfer_cost' %}
+                {% include 'introduction/_TestTransferCost.html' %}
+            {% else %}
+                <p>没有找到当前实验条件的测试问题。</p>
+            {% endif %}
+
+            <div class="text-right mt-3">
+                {% next_button %}
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

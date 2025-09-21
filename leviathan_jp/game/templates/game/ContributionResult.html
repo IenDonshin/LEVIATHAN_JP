@@ -1,0 +1,56 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    第 {{ player.round_number }} ラウンド：貢献の結果
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <div class="card-body">
+        <h4 class="card-title">グループ全体の貢献状況</h4>
+        <p>
+            グループの総貢献額は <strong>{{ group.total_contribution }}</strong> MU でした。
+            各メンバーは公共プロジェクトから <strong>{{ share }}</strong> MU の取り分を受け取ります。
+        </p>
+
+        <table class="table table-bordered">
+            <thead class="thead-dark">
+                <tr class="text-center">
+                    <th>プレイヤー ID</th>
+                    <th>本回合貢献金額</th>
+                    <th>公共池からの受取 / 公共池への貢献</th>
+                    <th>現在の保有額</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in players_data %}
+                {% with p=row.player %}
+                <tr {% if p == player %}class="table-primary"{% endif %} style="text-align: center;">
+                    <td>
+                        {% if p == player %}
+                            <strong>あなた (プレイヤー {{ p.id_in_group }})</strong>
+                        {% else %}
+                            プレイヤー {{ p.id_in_group }}
+                        {% endif %}
+                    </td>
+                    <td>{{ row.contribution }} / {{ endowment }}</td>
+                    <td>{{ row.received_from_public }} / {{ row.contribution }}</td>
+                    <td><strong>{{ row.current_total }}</strong></td>
+                </tr>
+                {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="text-right mt-3">
+    {% if player.round_number == 1 %}
+        <p>第1ラウンドでは罰を与えるフェーズはありません。次のラウンドに進みます。</p>
+    {% endif %}
+    {% next_button %}
+</div>
+
+{% endblock %}

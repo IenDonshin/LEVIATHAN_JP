@@ -1,0 +1,129 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    第 {{ player.round_number }} ラウンド：最終結果
+{% endblock %}
+
+{% block content %}
+
+{# ================================================================= #}
+{# 1. 当前玩家的个人收益结算                                        #}
+{# ================================================================= #}
+<div class="card bg-light mb-3">
+    <div class="card-body">
+        <h4 class="card-title">あなたの利得サマリー</h4>
+        <table class="table table-borderless" style="font-size: 1.1em;">
+            <tr>
+                <td>貢献フェーズでの利得</td>
+                <td class="text-right">{{ payoff_from_contribution }} MU</td>
+                <td>(初期保有額 - あなたの貢献 + 公共プロジェクトからの取り分)</td>
+            </tr>
+            <tr>
+                <td>罰を与えたコスト</td>
+                <td class="text-right text-danger">- {{ player.punishment_given }} MU</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>受けた罰による損失</td>
+                <td class="text-right text-danger">- {{ player.punishment_received }} MU</td>
+                <td></td>
+            </tr>
+            <tr style="border-top: 2px solid #333; font-weight: bold;">
+                <td>このラウンドの最終利得</td>
+                <td class="text-right">{{ player.payoff }} MU</td>
+                <td></td>
+            </tr>
+        </table>
+        <hr>
+        <p style="font-size: 1.2em;">
+            あなたの累積利得: <strong>{{ cumulative_payoff }} MU</strong>
+        </p>
+    </div>
+</div>
+
+{# ================================================================= #}
+{# 2. 图片中要求的第一个表格：贡献和惩罚总览                         #}
+{# ================================================================= #}
+<div class="card mb-3">
+    <div class="card-body">
+        <h4 class="card-title">ラウンド {{ player.round_number }} のサマリー</h4>
+        <table class="table table-bordered text-center">
+            <tbody>
+                <tr class="thead-dark">
+                    <th></th>
+                    {% for summary in players_summary %}
+                        <th>プレイヤー {{ summary.id_in_group }}</th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>本回合貢献金額</strong></td>
+                    {% for summary in players_summary %}
+                        <td>{{ summary.contribution }} / {{ summary.endowment }}</td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>本回合消費懲罰点</strong></td>
+                    {% for summary in players_summary %}
+                        <td>{{ summary.punishment_sent_total }}</td>
+                    {% endfor %}
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# ================================================================= #}
+{# 3. 图片中要求的第二个表格：惩罚矩阵                             #}
+{# ================================================================= #}
+<div class="card">
+    <div class="card-body">
+        <h4 class="card-title">罰の交換マトリックス</h4>
+        <table class="table table-bordered text-center">
+            <thead class="thead-dark">
+                <tr>
+                    <th>↓罰を受けた人 / 罰を与えた人→</th>
+                    {% for giver_id in matrix_headers %}
+                        <th>プレイヤー {{ giver_id }} からの罰</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for matrix_row in matrix_rows %}
+                <tr>
+                    <td><strong>プレイヤー {{ matrix_row.victim_id }}</strong></td>
+                    {% for cell in matrix_row.cells %}
+                        <td>{% if cell.is_self %}-{% else %}{{ cell.amount }}{% endif %}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="text-right mt-3">
+    {% next_button %}
+</div>
+
+{# oTree Template Tag to pass python variables to JS #}
+{% block internal_scripts %}
+    <script>
+        // A helper to sum a list of numbers, as there is no built-in filter
+        function sum_list(list) {
+            if (!Array.isArray(list)) return 0;
+            return list.reduce((a, b) => a + (b || 0), 0);
+        }
+        
+        // Register custom filters if supported
+        if (typeof otree !== 'undefined' && otree.api && typeof otree.api.setTemplateFilters === 'function') {
+            otree.api.setTemplateFilters({
+                sum_list: sum_list
+            });
+        } else {
+            console.warn('Custom JS template filters are not supported in this oTree version.');
+        }
+    </script>
+{% endblock %}
+
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    アンケート
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <div class="card-body">
+        <p>
+            最后，请您协助我们完成一份问卷调查。
+        </p>
+        {% if treatment_name == 'fixed' %}
+            <p>这是针对固定惩罚权实验的特定问卷问题。</p>
+        {% elif treatment_name == 'transfer_free' %}
+            <p>这是针对无成本转移惩罚权实验的特定问卷问题。</p>
+        {% elif treatment_name == 'transfer_cost' %}
+            <p>这是针对有成本转移惩罚权实验的特定问卷问题。</p>
+        {% else %}
+            <p>这是一个通用的问卷调查页面。</p>
+        {% endif %}
+        
+        <i>(未来可在此处添加 {{ formfields }})</i>
+    </div>
+</div>
+
+<div class="text-right mt-3">
+    {% next_button %}
+</div>
+
+{% endblock %}
