@@ -20,15 +20,15 @@ class Player(BasePlayer):
     q2_fixed = models.FloatField(label="問題2：公共財の乗数はいくつですか？", min=0)
 
     q1_transfer_free = models.StringField(
-        label="問題1：懲罰権を他者に譲渡できますか？",
+        label="問題1：罰威力を他者に移譲できますか？",
         choices=[('yes', 'はい'), ('no', 'いいえ')]
     )
-    q2_transfer_free = models.FloatField(label="問題2：譲渡にかかるコストはいくらですか？", min=0)
-    q3_transfer_free = models.IntegerField(label="問題3：最大で何ポイントまで譲渡できますか？", min=0)
+    q2_transfer_free = models.FloatField(label="問題2：移譲にかかるコストはいくらですか？", min=0)
+    q3_transfer_free = models.IntegerField(label="問題3：最大で何ポイントまで移譲できますか？", min=0)
 
-    q1_transfer_cost = models.IntegerField(label="問題1：譲渡コスト率はいくつですか？", min=0)
+    q1_transfer_cost = models.IntegerField(label="問題1：移譲コスト率はいくつですか？", min=0)
     q2_transfer_cost = models.StringField(
-        label="問題2：懲罰を譲渡するとコストを支払う必要がありますか？",
+        label="問題2：罰威力を移譲するとコストを支払う必要がありますか？",
         choices=[('yes', 'はい'), ('no', 'いいえ')]
     )
 

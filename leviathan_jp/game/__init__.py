@@ -11,11 +11,9 @@ from .pages import (
     FinalResult,
 )  # type: ignore
 
-
 doc = """
 Public goods game with punishment for the Leviathan project.
 """
-
 
 page_sequence = [
     Contribution,

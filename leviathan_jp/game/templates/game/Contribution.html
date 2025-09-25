@@ -10,13 +10,13 @@
 <div class="card bg-light mb-3">
     <div class="card-body">
         <p>
-            现在是第 {{ player.round_number }} / {{ C.num_rounds }} ラウンドです。
+            今は第 {{ player.round_number }} / {{ C.num_rounds }} ラウンドです。
         </p>
         <p>
-            あなたの初期保有額は <strong>{{ session.config.endowment }}</strong> MU (Monetary Units) です。
+            あなたの初期保有額は <strong>{{ session.config.endowment }}</strong> MUs (Monetary Units) です。
         </p>
         <p>
-            このラウンドで、公共プロジェクトに貢献したい金額を入力してください。(0 から {{ session.config.endowment }} の間の整数)
+            このラウンドで、公共プールに貢献したい金額を入力してください。(0 から {{ session.config.endowment }} の間の整数)
         </p>
         
         {% formfields %}

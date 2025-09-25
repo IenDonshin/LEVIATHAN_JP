@@ -43,21 +43,21 @@ class Test(Page): # 之前可能是 TestFixed
                     f"公共財の乗数は{player.session.config['contribution_multiplier']}です。もう一度確認してください。"
                 )
         elif treatment == 'transfer_free':
-            # 假设惩罚权可以转移，转移成本为0，最大可转移点数为初始惩罚点数
+            # 假设罰威力可以移譲，移譲成本为0，最大可移譲点数为初始惩罚点数
             if values['q1_transfer_free'] != 'yes' or \
                values['q2_transfer_free'] != 0 or \
                values['q3_transfer_free'] != player.session.config['deduction_points']:
                 return (
-                    f"無コスト譲渡条件の解答が正しくありません。懲罰権は譲渡可能で、譲渡コストは0、"
-                    f"最大譲渡ポイントは{player.session.config['deduction_points']}です。もう一度確認してください。"
+                    f"無コスト移譲条件の解答が正しくありません。罰威力は移譲可能で、移譲コストは0、"
+                    f"最大移譲ポイントは{player.session.config['deduction_points']}です。もう一度確認してください。"
                 )
         elif treatment == 'transfer_cost':
-            # 假设惩罚权可以转移，转移成本率为1，需要支付成本
+            # 假设罰威力可以移譲，移譲成本率为1，需要支付成本
             if values['q1_transfer_cost'] != player.session.config['punishment_transfer_cost_rate'] or \
                values['q2_transfer_cost'] != 'yes':
                 return (
-                    f"コストあり譲渡条件の解答が正しくありません。譲渡コスト率は"
-                    f"{player.session.config['punishment_transfer_cost_rate']}であり、懲罰を譲渡する際にはコストが必要です。"
+                    f"コストあり移譲条件の解答が正しくありません。移譲コスト率は"
+                    f"{player.session.config['punishment_transfer_cost_rate']}であり、罰威力を移譲する際にはコストが必要です。"
                     "もう一度確認してください。"
                 )
 

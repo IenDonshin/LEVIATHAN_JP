@@ -11,8 +11,8 @@
     <div class="card-body">
         <h4 class="card-title">グループ全体の貢献状況</h4>
         <p>
-            グループの総貢献額は <strong>{{ group.total_contribution }}</strong> MU でした。
-            各メンバーは公共プロジェクトから <strong>{{ share }}</strong> MU の取り分を受け取ります。
+            グループの総貢献額は <strong>{{ group.total_contribution }}</strong> でした。
+            各メンバーは公共プロジェクトから <strong>{{ share }}</strong> の取り分を受け取ります。
         </p>
 
         <table class="table table-bordered">
@@ -35,8 +35,8 @@
                             プレイヤー {{ p.id_in_group }}
                         {% endif %}
                     </td>
-                    <td>{{ row.contribution }} / {{ endowment }}</td>
-                    <td>{{ row.received_from_public }} / {{ row.contribution }}</td>
+                    <td>{% if p == player %}<strong>{{ row.contribution }} / {{ endowment }}</strong>{% else %}{{ row.contribution }} / {{ endowment }}{% endif %}</td>
+                    <td>{% if p == player %}<strong>{{ row.received_from_public }} / {{ row.contribution }}</strong>{% else %}{{ row.received_from_public }} / {{ row.contribution }}{% endif %}</td>
                     <td><strong>{{ row.current_total }}</strong></td>
                 </tr>
                 {% endwith %}

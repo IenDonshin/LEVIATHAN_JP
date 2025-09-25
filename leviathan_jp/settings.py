@@ -22,7 +22,7 @@ ROOMS = [
     ),
 ]
 
-PARTICIPANT_FIELDS = ["punishment_points_history", "cumulative_payoff"] # 添加 cumulative_payoff
+PARTICIPANT_FIELDS = ["punishment_points_history", "cumulative_payoff"] 
 SESSION_FIELDS = ["treatment"]
 
 SESSION_CONFIG_DEFAULTS = dict(
@@ -35,59 +35,59 @@ SESSION_CONFIGS = [
     dict(
         name='pggp_fixed',
         display_name="公共財ゲーム（罰威力固定）",
-        app_sequence=['introduction', 'game', 'survey'], # 更新为通用 App 名
+        app_sequence=['introduction', 'game', 'survey'], 
         num_demo_participants=5,
         players_per_group=5,
         num_rounds=20,  # ラウンド数
         endowment=20,  # 初期保有額
         contribution_multiplier=1.5,  # 公共財の効率係数
-        deduction_points=10,  # 初期懲罰権
-        punishment_effectiveness=1.0,  # 懲罰効率
+        deduction_points=10,  # 初期懲罰ポイント
+        punishment_effectiveness=1.0,  # 罰威力
         punishment_cost=1, # 懲罰コスト
-        power_transfer_allowed=False,  # 懲罰権譲渡不可
+        power_transfer_allowed=False,  # 罰威力の移譲不可
         costly_punishment_transfer=False,  # コストなし
         punishment_transfer_cost_rate=1,
         punishment_transfer_unit=0.1,
         practice_rounds=0,
-        treatment_name='fixed' # 新增此行
+        treatment_name='fixed'
     ),
     dict(
         name='pggp_transfer_free',
-        display_name="公共財ゲーム（罰威力譲渡・コストなし）",
-        app_sequence=['introduction', 'game', 'survey'], # 更新为通用 App 名
+        display_name="公共財ゲーム（罰威力移譲・コストなし）",
+        app_sequence=['introduction', 'game', 'survey'], 
         num_demo_participants=5,
         players_per_group=5,
         num_rounds=20,  # ラウンド数
         endowment=20,  # 初期保有額
         contribution_multiplier=1.5,  # 公共財の効率係数
-        deduction_points=10,  # 初期懲罰権
-        punishment_effectiveness=1.0,  # 懲罰効率
+        deduction_points=10,  # 初期懲罰ポイント
+        punishment_effectiveness=1.0,  # 罰威力
         punishment_cost=1, # 懲罰コスト
-        power_transfer_allowed=True,  # 懲罰権譲渡可
+        power_transfer_allowed=True,  # 罰威力の移譲可
         costly_punishment_transfer=False,  # コストなし
         punishment_transfer_cost_rate=1,
         punishment_transfer_unit=0.1,
         practice_rounds=0,
-        treatment_name='transfer_free' # 新增此行
+        treatment_name='transfer_free'
     ),
     dict(
         name='pggp_transfer_cost',
-        display_name="公共財ゲーム（罰威力譲渡・コストあり）",
-        app_sequence=['introduction', 'game', 'survey'], # 更新为通用 App 名
+        display_name="公共財ゲーム（罰威力移譲・コストあり）",
+        app_sequence=['introduction', 'game', 'survey'], 
         num_demo_participants=5,
         players_per_group=5,
         num_rounds=20,  # ラウンド数
         endowment=20,  # 初期保有額
         contribution_multiplier=1.5,  # 公共財の効率係数
-        deduction_points=10,  # 初期懲罰権
-        punishment_effectiveness=1.0,  # 惩罚效率
-        punishment_cost=1, # 惩罚成本
-        power_transfer_allowed=True,  # 惩罚权譲渡可
+        deduction_points=10,  # 初期懲罰ポイント
+        punishment_effectiveness=1.0,  # 罰威力
+        punishment_cost=1, # 懲罰コスト
+        power_transfer_allowed=True,  # 罰威力移譲可
         costly_punishment_transfer=True,  # コストあり
         punishment_transfer_cost_rate=1,
         punishment_transfer_unit=0.1,
         practice_rounds=0,
-        treatment_name='transfer_cost' # 新增此行
+        treatment_name='transfer_cost'
     ),
 ]
 
@@ -96,6 +96,7 @@ REAL_WORLD_CURRENCY_CODE = 'JPY'
 USE_POINTS = True
 TIME_ZONE = "Asia/Tokyo"
 POINTS_CUSTOM_NAME = "MUs"
+POINTS_DECIMAL_PLACES = 1
 
 ADMIN_USERNAME = 'admin'
 ADMIN_PASSWORD = environ.get('OTREE_ADMIN_PASSWORD')
@@ -115,3 +116,4 @@ DEMO_PAGE_INTRO_HTML = """
     <li><a href="/room/transfer_cost">コストありの罰威力の移譲</a></li>
 </ul>
 """
+

@@ -5,4 +5,19 @@
 {% endblock %}
 
 {% block global_scripts  %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document && document.documentElement) {
+            document.documentElement.setAttribute('lang', 'ja');
+        }
+        document.querySelectorAll('[required]').forEach(function(el) {
+            el.addEventListener('invalid', function () {
+                this.setCustomValidity('この項目は必須です。');
+            });
+            el.addEventListener('input', function () {
+                this.setCustomValidity('');
+            });
+        });
+    });
+</script>
 {% endblock %}

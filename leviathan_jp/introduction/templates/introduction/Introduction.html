@@ -10,36 +10,36 @@
 <div class="card">
     <div class="card-body">
         {% if treatment_name == 'fixed' %}
-            <p><strong>こちらは「懲罰権が固定されている条件」の説明です。</strong></p>
-            <p>この条件では、参加者が持つ懲罰権は固定であり、他の参加者に譲渡することはできません。</p>
+            <p><strong>こちらは「罰威力が固定されている条件」の説明です。</strong></p>
+            <p>この条件では、参加者が持つ罰威力は固定であり、他の参加者に移譲することはできません。</p>
             <ul>
                 <li>各ラウンドの初期保有額：{{ session.config.endowment }} MUs</li>
                 <li>公共財の乗数：{{ session.config.contribution_multiplier }}</li>
-                <li>初期懲罰ポイント：{{ session.config.deduction_points }} 点</li>
+                <li>初期罰威力ポイント：{{ session.config.deduction_points }} 点</li>
                 <li>懲罰コスト：{{ session.config.punishment_cost }} MUs／点</li>
-                <li>懲罰の効果：{{ session.config.punishment_effectiveness }} </li>
+                <li>罰威力の効果：{{ session.config.punishment_effectiveness }} </li>
             </ul>
         {% elif treatment_name == 'transfer_free' %}
-            <p><strong>こちらは「懲罰権を無コストで譲渡できる条件」の説明です。</strong></p>
-            <p>この条件では、参加者は自分の懲罰権をコストなしで他の参加者に譲渡できます。</p>
+            <p><strong>こちらは「罰威力を無コストで移譲できる条件」の説明です。</strong></p>
+            <p>この条件では、参加者は自分の罰威力をコストなしで他の参加者に移譲できます。</p>
             <ul>
                 <li>各ラウンドの初期保有額：{{ session.config.endowment }} MUs／点</li>
                 <li>公共財の乗数：{{ session.config.contribution_multiplier }}</li>
-                <li>初期懲罰ポイント：{{ session.config.deduction_points }} 点</li>
-                <li>懲罰権の譲渡：可能（譲渡コストなし）</li>
+                <li>初期罰威力ポイント：{{ session.config.deduction_points }} 点</li>
+                <li>罰威力の移譲：可能（移譲コストなし）</li>
                 <li>懲罰コスト：{{ session.config.punishment_cost }} MUs／点</li>
-                <li>懲罰の効果：{{ session.config.punishment_effectiveness }} </li>
+                <li>罰威力の効果：{{ session.config.punishment_effectiveness }} </li>
             </ul>
         {% elif treatment_name == 'transfer_cost' %}
-            <p><strong>こちらは「懲罰権をコストを払って譲渡できる条件」の説明です。</strong></p>
-            <p>この条件では、参加者は懲罰権を他者へ譲渡できますが、譲渡には設定されたコストが発生します。</p>
+            <p><strong>こちらは「罰威力をコストを払って移譲できる条件」の説明です。</strong></p>
+            <p>この条件では、参加者は罰威力を他者へ移譲できますが、移譲には設定されたコストが発生します。</p>
             <ul>
                 <li>各ラウンドの初期保有額：{{ session.config.endowment }} MUs</li>
                 <li>公共財の乗数：{{ session.config.contribution_multiplier }}</li>
-                <li>初期懲罰ポイント：{{ session.config.deduction_points }} 点</li>
-                <li>懲罰権の譲渡：可能（譲渡コスト率 {{ session.config.punishment_transfer_cost_rate }}）</li>
+                <li>初期罰威力ポイント：{{ session.config.deduction_points }} 点</li>
+                <li>罰威力の移譲：可能（移譲コスト率 {{ session.config.punishment_transfer_cost_rate }}）</li>
                 <li>懲罰コスト：{{ session.config.punishment_cost }} MUs／点</li>
-                <li>懲罰の効果：{{ session.config.punishment_effectiveness }} </li>
+                <li>罰威力の効果：{{ session.config.punishment_effectiveness }} </li>
             </ul>
         {% else %}
             <p>実験全体の概要を説明するページです。</p>

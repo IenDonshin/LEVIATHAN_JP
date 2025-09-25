@@ -18,8 +18,8 @@ class Constants(BaseConstants):
     players_per_group = 5
     num_rounds = 20
     
-    # 从 settings.py 中获取参数
-    # 如果 settings.py 中没有定义，则使用这里的默认值
+    # settings.py からパラメータを取得
+    # settings.py で未定義の場合は以下のデフォルトを使用
     endowment = 20
     multiplier = 1.5
     deduction_points = 10
@@ -28,7 +28,7 @@ class Constants(BaseConstants):
 
 class Subsession(BaseSubsession):
     def creating_session(self):
-        # 从 session.config 中读取实验参数，这样就可以通过 settings.py 灵活配置
+        # session.config から実験設定を読み込み、settings.py で柔軟に変更可能にする
         self.group_randomly()
         if self.round_number == 1:
             for p in self.get_players():
@@ -40,48 +40,50 @@ class Group(BaseGroup):
     individual_share = models.CurrencyField()
 
     def set_group_contribution(self):
-        """计算小组总贡献和每个人的回报"""
+        """グループの総貢献額と各自の取り分を計算"""
         players = self.get_players()
-        contributions = [p.contribution for p in players]
+        contributions = [p.contribution or 0 for p in players]
         self.total_contribution = sum(contributions)
-        self.individual_share = (
-            self.total_contribution * self.session.config['contribution_multiplier'] / Constants.players_per_group
-        )
+        group_size = len(players) or 1
+        multiplier = self.session.config.get('contribution_multiplier', Constants.multiplier)
+        share_value = float(self.total_contribution) * float(multiplier) / group_size
+        self.individual_share = c(share_value)
 
     def set_payoff(self):
-        """在惩罚阶段结束后为每位玩家结算收益"""
+        """懲罰フェーズ終了後に各プレイヤーの利得を確定"""
         for player in self.get_players():
             player.set_payoff()
 
 class Player(BasePlayer):
     contribution = models.CurrencyField(
         min=0,
-        label="您想为公共项目贡献多少？",
+        max=Constants.endowment,
+        label="公共財プロジェクトにいくら拠出しますか？",
     )
 
     def contribution_max(self):
         return self.session.config['endowment']
 
-    # 为每个可能的惩罚对象创建一个字段
-    # 假设小组最多有5人，id_in_group 从 1 到 5
-    punish_p1 = models.IntegerField(min=0, initial=0, label="对玩家1的惩罚点数")
-    punish_p2 = models.IntegerField(min=0, initial=0, label="对玩家2的惩罚点数")
-    punish_p3 = models.IntegerField(min=0, initial=0, label="对玩家3的惩罚点数")
-    punish_p4 = models.IntegerField(min=0, initial=0, label="对玩家4的惩罚点数")
-    punish_p5 = models.IntegerField(min=0, initial=0, label="对玩家5的惩罚点数")
+    # 各プレイヤーに与える罰点を入力するフィールド
+    # グループは最大5人を想定し、id_in_group は 1〜5
+    punish_p1 = models.IntegerField(min=0, initial=0, label="プレイヤー1への罰点")
+    punish_p2 = models.IntegerField(min=0, initial=0, label="プレイヤー2への罰点")
+    punish_p3 = models.IntegerField(min=0, initial=0, label="プレイヤー3への罰点")
+    punish_p4 = models.IntegerField(min=0, initial=0, label="プレイヤー4への罰点")
+    punish_p5 = models.IntegerField(min=0, initial=0, label="プレイヤー5への罰点")
 
-    punishment_given = models.CurrencyField(doc="送出的惩罚总成本")
-    punishment_received = models.CurrencyField(doc="收到的惩罚总损失")
+    punishment_given = models.CurrencyField(doc="与えた罰の総コスト")
+    punishment_received = models.CurrencyField(doc="受けた罰による総損失")
 
-    # payoff 字段 oTree 会自动创建，我们将在后面给它赋值
+    # payoff フィールドは oTree が自動生成するため、後で値を代入する
 
     def set_payoff(self):
-        """计算本轮最终收益"""
-        # 惩罚相关计算
-        # 1. 计算自己送出惩罚的总点数和成本
+        """今ラウンドの最終利得を計算"""
+        # 懲罰に関する計算
+        # 1. 自分が与えた罰点とコストを集計
         punishment_fields = [self.punish_p1, self.punish_p2, self.punish_p3, self.punish_p4, self.punish_p5]
-        # 排除对自己惩罚的字段（虽然界面上会禁止，但逻辑上要严谨）
-        # id_in_group 是从 1 开始的
+        # 自分自身への罰フィールドは除外（UI でも制限しているが念のため）
+        # id_in_group は 1 から始まる
         punishment_points_given = 0
         for i in range(len(punishment_fields)):
             if (i + 1) != self.id_in_group:
@@ -89,7 +91,7 @@ class Player(BasePlayer):
         
         self.punishment_given = punishment_points_given * self.session.config['punishment_cost']
 
-        # 2. 计算自己收到的总惩罚点数和损失
+        # 2. 自分が受けた罰点と損失を集計
         punishment_points_received = 0
         for other_player in self.get_others_in_group():
             field_name = f'punish_p{self.id_in_group}'
@@ -97,14 +99,14 @@ class Player(BasePlayer):
         
         self.punishment_received = punishment_points_received * self.session.config['punishment_effectiveness']
 
-        # 3. 根据公式计算最终收益
+        # 3. 式に基づいて最終利得を算出
         # π_i = E - c_i + (m/n)Σc_j - pc*Σd_ij - pe*Σd_ji
         payoff_before_punishment = (
             self.session.config['endowment'] - self.contribution + self.group.individual_share
         )
         self.payoff = payoff_before_punishment - self.punishment_given - self.punishment_received
         
-        # 更新累计收益
+        # 累積利得を更新
         if 'cumulative_payoff' not in self.participant.vars:
             self.participant.vars['cumulative_payoff'] = c(0)
         self.participant.vars['cumulative_payoff'] += self.payoff

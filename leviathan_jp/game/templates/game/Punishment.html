@@ -37,28 +37,18 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for p_row in group.get_players %}
                     <tr>
-                        <td class="text-center">
-                            {% if p_row == player %}
-                                <strong>あなた (プレイヤー {{ p_row.id_in_group }})</strong>
-                            {% else %}
-                                プレイヤー {{ p_row.id_in_group }}
-                            {% endif %}
-                        </td>
+                        <td class="text-center"><strong>あなた (プレイヤー {{ player.id_in_group }})</strong></td>
                         {% for p_col in group.get_players %}
                             <td class="text-center">
-                                {% if p_row == player and p_col != player %}
+                                {% if p_col != player %}
                                     <input type="number" name="punish_p{{ p_col.id_in_group }}" min="0" value="0" class="form-control punishment-input" style="width: 80px; margin: auto;">
-                                {% elif p_row == p_col %}
-                                    <div style="width: 80px; margin: auto; background-color: #f0f0f0; padding: 6px 0;">--</div>
                                 {% else %}
-                                    <div style="width: 80px; margin: auto; padding: 6px 0;">?</div>
+                                    <div style="width: 80px; margin: auto; background-color: #f0f0f0; padding: 6px 0;">--</div>
                                 {% endif %}
                             </td>
                         {% endfor %}
                     </tr>
-                    {% endfor %}
                 </tbody>
             </table>
             <div class="text-right mt-3">

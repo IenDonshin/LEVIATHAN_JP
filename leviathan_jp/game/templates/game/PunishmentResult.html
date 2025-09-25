@@ -16,56 +16,66 @@
         <table class="table table-borderless" style="font-size: 1.1em;">
             <tr>
                 <td>貢献フェーズでの利得</td>
-                <td class="text-right">{{ payoff_from_contribution }} MU</td>
-                <td>(初期保有額 - あなたの貢献 + 公共プロジェクトからの取り分)</td>
+                <td class="text-right">{{ payoff_from_contribution }} </td>
+                <td>(初期保有額 - あなたの貢献 + 公共プールからの取り分)</td>
             </tr>
             <tr>
                 <td>罰を与えたコスト</td>
-                <td class="text-right text-danger">- {{ player.punishment_given }} MU</td>
+                <td class="text-right text-danger">- {{ player.punishment_given }} </td>
                 <td></td>
             </tr>
             <tr>
                 <td>受けた罰による損失</td>
-                <td class="text-right text-danger">- {{ player.punishment_received }} MU</td>
+                <td class="text-right text-danger">- {{ player.punishment_received }} </td>
                 <td></td>
             </tr>
             <tr style="border-top: 2px solid #333; font-weight: bold;">
                 <td>このラウンドの最終利得</td>
-                <td class="text-right">{{ player.payoff }} MU</td>
+                <td class="text-right">{{ player.payoff }} </td>
                 <td></td>
             </tr>
         </table>
         <hr>
         <p style="font-size: 1.2em;">
-            あなたの累積利得: <strong>{{ cumulative_payoff }} MU</strong>
+            あなたの累積利得: <strong>{{ cumulative_payoff }} </strong>
         </p>
     </div>
 </div>
 
+<style>
+    .punishment-matrix th, .punishment-matrix td {
+        font-size: 0.85rem;
+        white-space: nowrap;
+        padding: 0.5rem 0.75rem;
+    }
+    .punishment-matrix th {
+        font-weight: 600;
+    }
+</style>
 {# ================================================================= #}
-{# 2. 图片中要求的第一个表格：贡献和惩罚总览                         #}
+{# 第一个表格：贡献和惩罚总览                         #}
 {# ================================================================= #}
 <div class="card mb-3">
     <div class="card-body">
         <h4 class="card-title">ラウンド {{ player.round_number }} のサマリー</h4>
-        <table class="table table-bordered text-center">
+        <table class="table table-bordered text-center punishment-matrix">
             <tbody>
                 <tr class="thead-dark">
                     <th></th>
                     {% for summary in players_summary %}
-                        <th>プレイヤー {{ summary.id_in_group }}</th>
+                        <th>{% if summary.id_in_group == player.id_in_group %}あなた{% else %}プレイヤー {{ summary.id_in_group }}{% endif %}</th>
                     {% endfor %}
                 </tr>
                 <tr>
                     <td><strong>本回合貢献金額</strong></td>
                     {% for summary in players_summary %}
-                        <td>{{ summary.contribution }} / {{ summary.endowment }}</td>
+                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.contribution }} / {{ summary.endowment }}</strong>{% else %}{{ summary.contribution }} / {{ summary.endowment }}{% endif %}</td>
                     {% endfor %}
                 </tr>
                 <tr>
                     <td><strong>本回合消費懲罰点</strong></td>
                     {% for summary in players_summary %}
-                        <td>{{ summary.punishment_sent_total }}</td>
+                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.punishment_sent_total }}</strong>{% else %}{{ summary.punishment_sent_total }}{% endif %}</td>
                     {% endfor %}
                 </tr>
             </tbody>
@@ -79,19 +89,19 @@
 <div class="card">
     <div class="card-body">
         <h4 class="card-title">罰の交換マトリックス</h4>
-        <table class="table table-bordered text-center">
+        <table class="table table-bordered text-center punishment-matrix">
             <thead class="thead-dark">
                 <tr>
-                    <th>↓罰を受けた人 / 罰を与えた人→</th>
+                    <th> </th>
                     {% for giver_id in matrix_headers %}
-                        <th>プレイヤー {{ giver_id }} からの罰</th>
+                        <th>{% if giver_id == player.id_in_group %}あなた{% else %}プレイヤー {{ giver_id }}{% endif %} からの罰</th>
                     {% endfor %}
                 </tr>
             </thead>
             <tbody>
                 {% for matrix_row in matrix_rows %}
-                <tr>
-                    <td><strong>プレイヤー {{ matrix_row.victim_id }}</strong></td>
+                <tr class="{% if matrix_row.victim_id == player.id_in_group %}table-primary{% endif %}">
+                    <td><strong>{% if matrix_row.victim_id == player.id_in_group %}あなた{% else %}プレイヤー {{ matrix_row.victim_id }}{% endif %}</strong></td>
                     {% for cell in matrix_row.cells %}
                         <td>{% if cell.is_self %}-{% else %}{{ cell.amount }}{% endif %}</td>
                     {% endfor %}

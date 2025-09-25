@@ -76,6 +76,19 @@ class Contribution(Page):
             history_rounds=build_history_rounds(player),
         )
 
+    @staticmethod
+    def error_message(player, values):
+        contribution = values.get('contribution')
+        if contribution is None:
+            return '貢献額を入力してください。'
+        endowment = player.session.config.get('endowment', Constants.endowment)
+        amount = float(contribution)
+        if amount < 0 or amount > endowment:
+            return f'貢献額は0から{endowment}までの範囲で入力してください。'
+        if not amount.is_integer():
+            return '貢献額は整数で入力してください。'
+        return None
+
 # =============================================================================
 # CLASS: ContributionWaitPage
 # =============================================================================
@@ -116,6 +129,7 @@ class ContributionResult(Page):
             endowment=endowment_currency,
             share=share,
         )
+
 
 # =============================================================================
 # CLASS: Punishment
