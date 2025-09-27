@@ -54,5 +54,27 @@
         if (typeof otree !== 'undefined' && otree.api && typeof otree.api.setTemplateFilters === 'function') {
             otree.api.setTemplateFilters({ sum_list: sum_list });
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var contributionInput = document.querySelector('input[name="contribution"]');
+            if (!contributionInput) {
+                return;
+            }
+
+            var current = contributionInput.value;
+            if (current === '' || current === null) {
+                contributionInput.value = '0';
+            } else {
+                var parsed = parseInt(current, 10);
+                if (Number.isNaN(parsed)) {
+                    contributionInput.value = '0';
+                } else {
+                    contributionInput.value = parsed.toString();
+                }
+            }
+            contributionInput.setAttribute('step', '1');
+            contributionInput.setAttribute('min', '0');
+            contributionInput.setAttribute('max', '{{ session.config.endowment }}');
+        });
     </script>
 {% endblock %}

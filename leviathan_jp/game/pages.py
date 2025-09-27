@@ -96,6 +96,9 @@ class ContributionWaitPage(WaitPage):
     @staticmethod
     def after_all_players_arrive(group):
         group.set_group_contribution()
+        if group.round_number == 1:
+            for player in group.get_players():
+                player.set_payoff()
 
 # =============================================================================
 # CLASS: ContributionResult
@@ -242,6 +245,16 @@ class PunishmentResult(Page):
             matrix_headers=[member.id_in_group for member in players],
         )
 
+    @staticmethod
+    def before_next_page(player, timeout_happened):
+        stop_round = player.session.config.get('browser_bot_stop_round')
+        if (
+            stop_round
+            and player.round_number == stop_round
+            and player.participant.is_browser_bot
+        ):
+            player.participant.is_browser_bot = False
+
 # =============================================================================
 # CLASS: FinalResult (在 game App 中)
 # =============================================================================
@@ -253,12 +266,16 @@ class FinalResult(Page):
     @staticmethod
     def vars_for_template(player):
         final_payoff_jpy = player.participant.payoff_plus_participation_fee()
+        performance_payoff = player.participant.payoff.to_real_world_currency(player.session)
+        currency_code = player.session.config.get('real_world_currency_code', 'JPY')
 
         return {
             'players': sorted(player.group.get_players(), key=lambda p: p.id_in_group),
             'final_payoff_jpy': final_payoff_jpy,
             'C': Constants,
             'Constants': Constants,
+            'performance_payoff': performance_payoff,
+            'currency_code': currency_code,
         }
 
 

@@ -18,7 +18,7 @@
             <thead class="thead-dark">
                 <tr class="text-center">
                     <th>プレイヤー</th>
-                    <th>累積収益金額 (MU)</th>
+                    <th>累積収益金額 (MUs)</th>
                 </tr>
             </thead>
             <tbody>
@@ -31,7 +31,7 @@
                             プレイヤー {{ p.id_in_group }}
                         {% endif %}
                     </td>
-                    <td>{{ p.participant.payoff }}</td> {# 这里的 participant.payoff 已经由 models.py 在最后一轮赋值 #}
+                    <td>{{ p.participant.payoff }}</td> {# ここでparticipant.payoffは最後のラウンドでmodels.pyによって #}
                 </tr>
                 {% endfor %}
             </tbody>
@@ -43,13 +43,13 @@
             <div class="card-body">
                 <h4>あなたの最終報酬</h4>
                 <p>
-                    あなたの累積利得は <strong>{{ participant.payoff }} MU</strong> です。
+                    あなたの累積利得は <strong>{{ participant.payoff }} </strong> です。
                 </p>
                 <p>
-                    換金レート (1 MU = {{ session.config.real_world_currency_per_point }} {{ Constants.real_world_currency_code }}) に基づき、实验の成績による報酬は <strong>{{ participant.payoff|to_real_world_currency:session }}</strong> です。
+                    換金レート (1 MU = {{ session.config.real_world_currency_per_point }} {{ currency_code }}) に基づき、实验の成績による報酬は <strong>{{ performance_payoff }}</strong> です。
                 </p>
                 <p>
-                    これに参加費 <strong>{{ session.config.participation_fee }} {{ Constants.real_world_currency_code }}</strong> を加えた、あなたの最終的な受取金額は <strong>{{ final_payoff_jpy }} {{ Constants.real_world_currency_code }}</strong> です。
+                    これに参加費 <strong>{{ session.config.participation_fee }} {{ currency_code }}</strong> を加えた、あなたの最終的な受取金額は <strong>{{ final_payoff_jpy }} {{ currency_code }}</strong> です。
                 </p>
             </div>
         </div>

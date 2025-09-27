@@ -28,7 +28,8 @@ SESSION_FIELDS = ["treatment"]
 SESSION_CONFIG_DEFAULTS = dict(
     real_world_currency_per_point=2,
     participation_fee=500,
-    doc="公共財ゲーム。Roomsで条件を振り分け。"
+    doc="公共財ゲーム。Roomsで条件を振り分け。",
+    mturk_hit_settings=dict(),
 )
 
 SESSION_CONFIGS = [
@@ -49,7 +50,9 @@ SESSION_CONFIGS = [
         punishment_transfer_cost_rate=1,
         punishment_transfer_unit=0.1,
         practice_rounds=0,
-        treatment_name='fixed'
+        treatment_name='fixed',
+        use_browser_bots=False,
+        browser_bot_stop_round=19,
     ),
     dict(
         name='pggp_transfer_free',
@@ -116,4 +119,3 @@ DEMO_PAGE_INTRO_HTML = """
     <li><a href="/room/transfer_cost">コストありの罰威力の移譲</a></li>
 </ul>
 """
-

@@ -58,6 +58,7 @@ class Player(BasePlayer):
     contribution = models.CurrencyField(
         min=0,
         max=Constants.endowment,
+        initial=0,
         label="公共財プロジェクトにいくら拠出しますか？",
     )
 
