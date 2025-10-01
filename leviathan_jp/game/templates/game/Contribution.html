@@ -16,7 +16,8 @@
             あなたの初期保有額は <strong>{{ session.config.endowment }}</strong> MUs (Monetary Units) です。
         </p>
         <p>
-            このラウンドで、公共プールに貢献したい金額を入力してください。(0 から {{ session.config.endowment }} の間の整数)
+            今ラウンドで移転コストなどを差し引いた後に使える残額は <strong>{{ available_endowment }}</strong> です。
+            このラウンドで公共プールにいくら拠出しますか？ (0 から {{ available_endowment }} の範囲で整数)
         </p>
         
         {% formfields %}
@@ -28,7 +29,7 @@
                 <i class="fas fa-history"></i> 全履歴を見る
             </button>
             {% else %}
-            <span></span> {# Keeps the next button to the right #}
+            <span></span> {# 次へボタンを右側に維持するためのスペース #}
             {% endif %}
             
             {% next_button %}
@@ -36,7 +37,7 @@
     </div>
 </div>
 
-{# --- 履歴モーダルをインクルード --- #}
+{# --- 履歴モーダルを読み込む --- #}
 {% if player.round_number > 1 and history_rounds %}
     {% include "game/_HistoryModal.html" %}
 {% endif %}
@@ -44,7 +45,7 @@
 {% endblock %}
 
 
-{# The custom JS helper is needed for the history modal #}
+{# 履歴モーダルで使用するカスタム JS ヘルパー #}
 {% block internal_scripts %}
     <script>
         function sum_list(list) {
@@ -74,7 +75,7 @@
             }
             contributionInput.setAttribute('step', '1');
             contributionInput.setAttribute('min', '0');
-            contributionInput.setAttribute('max', '{{ session.config.endowment }}');
+            contributionInput.setAttribute('max', '{{ available_endowment }}');
         });
     </script>
 {% endblock %}

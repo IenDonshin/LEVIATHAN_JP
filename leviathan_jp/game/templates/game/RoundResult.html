@@ -8,7 +8,7 @@
 {% block content %}
 
 {# ================================================================= #}
-{# 1. 当前玩家的个人收益结算                                        #}
+{# 1. このプレイヤーの個人収益サマリー                              #}
 {# ================================================================= #}
 <div class="card bg-light mb-3">
     <div class="card-body">
@@ -29,6 +29,13 @@
                 <td class="text-right text-danger">- {{ player.punishment_received }} </td>
                 <td></td>
             </tr>
+            {% if show_power_transfer and player.session.config.costly_punishment_transfer %}
+            <tr>
+                <td>罰威力移転によるコスト</td>
+                <td class="text-right text-danger">- {{ player.power_transfer_cost }} </td>
+                <td></td>
+            </tr>
+            {% endif %}
             <tr style="border-top: 2px solid #333; font-weight: bold;">
                 <td>このラウンドの最終利得</td>
                 <td class="text-right">{{ player.payoff }} </td>
@@ -53,7 +60,7 @@
     }
 </style>
 {# ================================================================= #}
-{# 第一个表格：贡献和惩罚总览                         #}
+{# 第一の表: 貢献と罰の概要                           #}
 {# ================================================================= #}
 <div class="card mb-3">
     <div class="card-body">
@@ -66,16 +73,44 @@
                         <th>{% if summary.id_in_group == player.id_in_group %}あなた{% else %}プレイヤー {{ summary.id_in_group }}{% endif %}</th>
                     {% endfor %}
                 </tr>
+                {% if show_power_transfer %}
+                <tr>
+                    <td><strong>罰威力</strong></td>
+                    {% for summary in players_summary %}
+                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.power_after_display }} / 1.0</strong>{% else %}{{ summary.power_after_display }} / 1.0{% endif %}</td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>転出 / 転入</strong></td>
+                    {% for summary in players_summary %}
+                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>- {{ summary.power_transfer_out_display }} / + {{ summary.power_transfer_in_display }}</strong>{% else %}- {{ summary.power_transfer_out_display }} / + {{ summary.power_transfer_in_display }}{% endif %}</td>
+                    {% endfor %}
+                </tr>
+                {% if player.session.config.costly_punishment_transfer %}
+                <tr>
+                    <td><strong>移転コスト</strong></td>
+                    {% for summary in players_summary %}
+                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.power_transfer_cost }}</strong>{% else %}{{ summary.power_transfer_cost }}{% endif %}</td>
+                    {% endfor %}
+                </tr>
+                {% endif %}
+                {% endif %}
                 <tr>
                     <td><strong>本回合貢献金額</strong></td>
                     {% for summary in players_summary %}
-                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.contribution }} / {{ summary.endowment }}</strong>{% else %}{{ summary.contribution }} / {{ summary.endowment }}{% endif %}</td>
+                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.contribution }} / {{ summary.available_before_contribution }}</strong>{% else %}{{ summary.contribution }} / {{ summary.available_before_contribution }}{% endif %}</td>
                     {% endfor %}
                 </tr>
                 <tr>
                     <td><strong>本回合消費懲罰点</strong></td>
                     {% for summary in players_summary %}
-                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.punishment_sent_total }}</strong>{% else %}{{ summary.punishment_sent_total }}{% endif %}</td>
+                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.punishment_sent_total }} / {{ deduction_points }}</strong>{% else %}{{ summary.punishment_sent_total }} / {{ deduction_points }}{% endif %}</td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>本回合受けた罰（合計）</strong></td>
+                    {% for summary in players_summary %}
+                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.punishment_received_total }}</strong>{% else %}{{ summary.punishment_received_total }}{% endif %}</td>
                     {% endfor %}
                 </tr>
             </tbody>
@@ -84,7 +119,7 @@
 </div>
 
 {# ================================================================= #}
-{# 3. 图片中要求的第二个表格：惩罚矩阵                             #}
+{# 第三の表: 画像で指定された罰のマトリクス                        #}
 {# ================================================================= #}
 <div class="card">
     <div class="card-body">
@@ -116,7 +151,7 @@
     {% next_button %}
 </div>
 
-{# oTree Template Tag to pass python variables to JS #}
+{# oTree のテンプレートタグで Python の値を JS に渡す #}
 {% block internal_scripts %}
     <script>
         // A helper to sum a list of numbers, as there is no built-in filter

@@ -4,14 +4,14 @@ from otree.api import Page, WaitPage
 
 from .models import Constants
 
-class Introduction(Page): # 之前可能是 IntroductionFixed
+class Introduction(Page): # 以前のバージョンでは IntroductionFixed だったページ
     @staticmethod
     def vars_for_template(player):
         return {
             'treatment_name': player.session.config['treatment_name']
         }
 
-class Test(Page): # 之前可能是 TestFixed
+class Test(Page): # 以前のバージョンでは TestFixed だったページ
     form_model = 'player'
 
     @staticmethod
@@ -34,7 +34,7 @@ class Test(Page): # 之前可能是 TestFixed
     @staticmethod
     def error_message(player, values):
         treatment = player.session.config['treatment_name']
-        # 注意: 这里的正确答案应该与您的实验设计相符
+        # 注意: ここで求める正解は実験設計に合わせて設定してください
         if treatment == 'fixed':
             if values['q1_fixed'] != player.session.config['endowment'] or \
                values['q2_fixed'] != player.session.config['contribution_multiplier']:
@@ -43,7 +43,7 @@ class Test(Page): # 之前可能是 TestFixed
                     f"公共財の乗数は{player.session.config['contribution_multiplier']}です。もう一度確認してください。"
                 )
         elif treatment == 'transfer_free':
-            # 假设罰威力可以移譲，移譲成本为0，最大可移譲点数为初始惩罚点数
+            # 罰威力は移譲可能でコストは0、最大移譲ポイントは初期の懲罰点数であると仮定
             if values['q1_transfer_free'] != 'yes' or \
                values['q2_transfer_free'] != 0 or \
                values['q3_transfer_free'] != player.session.config['deduction_points']:
@@ -52,7 +52,7 @@ class Test(Page): # 之前可能是 TestFixed
                     f"最大移譲ポイントは{player.session.config['deduction_points']}です。もう一度確認してください。"
                 )
         elif treatment == 'transfer_cost':
-            # 假设罰威力可以移譲，移譲成本率为1，需要支付成本
+            # 罰威力は移譲可能でコスト率が1、移譲時にコストが発生すると仮定
             if values['q1_transfer_cost'] != player.session.config['punishment_transfer_cost_rate'] or \
                values['q2_transfer_cost'] != 'yes':
                 return (

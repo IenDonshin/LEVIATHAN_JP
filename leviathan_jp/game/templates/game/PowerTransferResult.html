@@ -1,0 +1,86 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    第 {{ player.round_number }} ラウンド：罰威力移転の結果
+{% endblock %}
+
+{% block content %}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h4 class="card-title">本ラウンドのサマリー</h4>
+        <p class="mb-0">各列はプレイヤーごとの罰威力と移転の状況を表します。あなたの列は強調表示されています。</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered text-center">
+                <thead class="thead-dark">
+                    <tr>
+                        <th></th>
+                        {% for col in columns %}
+                            <th>{% if col.is_self %}あなた{% else %}{{ col.header }}{% endif %}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th>ラウンド</th>
+                        <td colspan="{{ columns_length }}">第 {{ round_number }} ラウンド</td>
+                    </tr>
+                    <tr>
+                        <th>罰威力</th>
+                        {% for col in columns %}
+                            <td class="{% if col.is_self %}table-primary{% endif %}">{{ col.final_power_display }}</td>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        <th>転出/転入</th>
+                        {% for col in columns %}
+                            <td class="{% if col.is_self %}table-primary{% endif %}">{{ col.net_transfer_display }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% if is_costly %}
+                    <tr>
+                        <th>移転コスト</th>
+                        {% for col in columns %}
+                            <td class="{% if col.is_self %}table-primary{% endif %}">{{ col.transfer_cost_display }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endif %}
+                    <tr class="table-secondary">
+                        <th>転出方向</th>
+                        {% for header in transfer_headers %}
+                            <td>{{ header }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% if transfer_matrix %}
+                        {% for row in transfer_matrix %}
+                            <tr class="{% if row.is_self %}table-primary{% endif %}">
+                                <th>{% if row.is_self %}あなた{% else %}{{ row.row_label }}{% endif %}</th>
+                                {% for cell in row.cells %}
+                                    <td class="{% if row.is_self or (cell.highlight and not cell.is_self) %}table-primary{% endif %}">{{ cell.display|default:'-' }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="{{ columns_length_plus_one }}" class="text-muted">詳細な移転データはまだ利用できません。</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <p class="text-muted mb-0">受け取った罰威力は次ラウンドに持ち越されます。</p>
+    </div>
+</div>
+
+<div class="text-right mt-3">
+    {% next_button %}
+</div>
+
+{% endblock %}

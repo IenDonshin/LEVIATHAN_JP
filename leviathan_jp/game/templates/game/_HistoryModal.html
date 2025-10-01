@@ -1,5 +1,5 @@
 {# File: game/templates/game/_HistoryModal.html #}
-{# This is a reusable template for the history modal #}
+{# 履歴モーダルで再利用するテンプレート #}
 {% load otree static %}
 
 <style>
@@ -25,9 +25,6 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="historyModalLabel"><i class="fas fa-history"></i> 全履歴</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
             </div>
             <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                 
@@ -38,7 +35,7 @@
                            <strong>ラウンド {{ round_data.round_number }} の結果</strong>
                         </div>
                         <div class="card-body">
-                            {# --- 上半部分的总览表 --- #}
+                            {# --- 上段のサマリー表 --- #}
                             <table class="table table-bordered text-center table-sm">
                                 <tbody>
                                     <tr class="thead-light">
@@ -53,6 +50,26 @@
                                             <td>{{ entry.contribution }} / {{ entry.endowment }}</td>
                                         {% endfor %}
                                     </tr>
+                                    {% if round_data.has_power_transfer %}
+                                    <tr>
+                                        <td><strong>罰威力</strong></td>
+                                        {% for entry in round_data.players %}
+                                            <td>{{ entry.power_after_display }} / 1.0</td>
+                                        {% endfor %}
+                                    </tr>
+                                    <tr>
+                                        <td><strong>転出 / 転入</strong></td>
+                                        {% for entry in round_data.players %}
+                                            <td>- {{ entry.power_transfer_out_display }} / + {{ entry.power_transfer_in_display }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                    <tr>
+                                        <td><strong>移転コスト</strong></td>
+                                        {% for entry in round_data.players %}
+                                            <td>{{ entry.power_transfer_cost }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endif %}
                                     {% if round_data.has_punishment %}
                                     <tr>
                                         <td><strong>回合消耗懲罰点</strong></td>
@@ -64,7 +81,31 @@
                                 </tbody>
                             </table>
 
-                            {# --- 下半部分的惩罚矩阵 --- #}
+                            {% if round_data.has_power_transfer %}
+                            <h6 class="mt-3">罰威力の移転履歴</h6>
+                            <table class="table table-bordered text-center table-sm">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>↓移転先 / 移転元→</th>
+                                        {% for entry in round_data.players %}
+                                            <th>プレイヤー {{ entry.id_in_group }} から</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transfer_row in round_data.transfer_rows %}
+                                    <tr>
+                                        <td><strong>プレイヤー {{ transfer_row.giver_id }}</strong></td>
+                                        {% for cell in transfer_row.cells %}
+                                            <td>{% if cell.is_self %}-{% else %}{{ cell.amount_display }}{% endif %}</td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% endif %}
+
+                            {# --- 下段の罰マトリクス --- #}
                             {% if round_data.has_punishment %}
                             <h6 class="mt-3">罰の交換マトリックス</h6>
                             <table class="table table-bordered text-center table-sm">

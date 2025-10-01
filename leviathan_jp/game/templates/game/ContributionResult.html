@@ -35,7 +35,7 @@
                             プレイヤー {{ p.id_in_group }}
                         {% endif %}
                     </td>
-                    <td>{% if p == player %}<strong>{{ row.contribution }} / {{ endowment }}</strong>{% else %}{{ row.contribution }} / {{ endowment }}{% endif %}</td>
+                    <td>{% if p == player %}<strong>{{ row.contribution }} / {{ row.available_before_contribution }}</strong>{% else %}{{ row.contribution }} / {{ row.available_before_contribution }}{% endif %}</td>
                     <td>{% if p == player %}<strong>{{ row.received_from_public }} / {{ row.contribution }}</strong>{% else %}{{ row.received_from_public }} / {{ row.contribution }}{% endif %}</td>
                     <td><strong>{{ row.current_total }}</strong></td>
                 </tr>

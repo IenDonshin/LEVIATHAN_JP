@@ -1,184 +1,252 @@
 {% extends "global/Page.html" %}
-{% load otree %}
+{% load otree static %}
 
 {% block title %}
-    第{{ player.round_number }}ラウンド - 罰威力の移譲
+    第 {{ player.round_number }} ラウンド：罰威力の移転
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="card">
-        <div class="card-header {% if is_costly %}bg-warning{% else %}bg-success{% endif %} text-white">
-            <h4 class="mb-0">罰威力移譲の決定</h4>
-        </div>
-        <div class="card-body">
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <div class="alert alert-info">
-                        <p class="mb-0"><strong>初期罰威力：</strong>
-                            <span class="h4">{{ initial_power }}</span>ポイント
-                        </p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="alert alert-secondary">
-                        <p class="mb-0"><strong>私の貢献：</strong>
-                            <span class="h4">{{ my_contribution|floatformat:0 }}</span>
-                        </p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="alert alert-secondary">
-                        <p class="mb-0"><strong>平均貢献：</strong>
-                            <span class="h4">{{ avg_contribution|floatformat:1 }}</span>
-                        </p>
-                    </div>
-                </div>
-            </div>
-            
-            {% if is_costly %}
-            <div class="alert alert-warning">
-                <strong>注意：</strong>罰威力の移譲には<strong>0.1ポイントにつき1通貨単位</strong>のコストがかかります
-            </div>
-            {% endif %}
-            
-            <form method="post">
-                <h5>他のプレイヤーへの移譲</h5>
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>プレイヤー</th>
-                            <th>貢献額</th>
-                            <th>移譲する罰威力</th>
-                            {% if is_costly %}
-                            <th>移譲コスト</th>
+
+<div class="card bg-light mb-3">
+    <div class="card-body">
+        <h4 class="card-title mb-3">現在の罰威力</h4>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered text-center mb-0">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>プレイヤー</th>
+                        <th>罰威力</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="table-primary">
+                        <td>あなた (プレイヤー {{ player.id_in_group }})</td>
+                        <td><strong id="current-power-display">{{ current_power_display }}</strong></td>
+                    </tr>
+                    {% if players_status %}
+                        {% for status in players_status %}
+                            {% if not status.is_self %}
+                                <tr class="text-muted">
+                                    <td>
+                                        {% if status.label %}
+                                            {{ status.label }}
+                                        {% else %}
+                                            プレイヤー {{ status.id_in_group }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if status.current_power %}
+                                            {{ status.current_power }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
                             {% endif %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for other in others_data %}
-                        <tr>
-                            <td>{{ other.player_code }}</td>
-                            <td>{{ other.contribution|floatformat:0 }}</td>
-                            <td>
-                                <input type="number" 
-                                       name="transfer_p{{ other.id_in_group }}" 
-                                       class="form-control transfer-input"
-                                       data-player="{{ other.id_in_group }}"
-                                       min="0" 
-                                       max="{{ max_transfer }}" 
-                                       step="{{ transfer_unit }}"
-                                       value="0"
-                                       style="width: 120px;">
-                            </td>
-                            {% if is_costly %}
-                            <td class="transfer-cost" id="cost-{{ other.id_in_group }}">0</td>
-                            {% endif %}
-                        </tr>
                         {% endfor %}
-                    </tbody>
-                    <tfoot>
-                        <tr class="table-warning">
-                            <td colspan="2" class="text-right"><strong>移譲総量：</strong></td>
-                            <td><strong id="total-transfer">0</strong> / {{ initial_power }}</td>
-                            {% if is_costly %}
-                            <td><strong id="total-cost">0</strong></td>
-                            {% endif %}
-                        </tr>
-                    </tfoot>
-                </table>
-                
-                <div class="alert alert-danger" id="error-message" style="display: none;">
-                </div>
-                
-                <div class="alert alert-info mt-3">
-                    <strong>説明：</strong>
-                    <ul class="mb-0">
-                        <li>移譲単位：{{ transfer_unit }}ポイント</li>
-                        <li>最終罰威力 = {{ initial_power }} - 移譲分 + 受取分</li>
-                        {% if is_costly %}
-                        <li>移譲コストは貢献利得から差し引かれます</li>
-                        {% endif %}
-                    </ul>
-                </div>
-                
-                <div class="mt-3">
-                    <button type="submit" class="btn btn-primary" id="submit-btn">移譲を確定</button>
-                </div>
-            </form>
+                    {% endif %}
+                </tbody>
+            </table>
         </div>
+        <p class="mt-3 mb-0 small text-muted">最初の移転ラウンドでは罰威力は 1.0 から開始します。</p>
     </div>
 </div>
 
-<!-- 将Django变量存储在隐藏的data属性中 -->
-<div id="transfer-config" style="display:none;"
-     data-max-transfer="{{ initial_power }}"
+<form method="post" id="power-transfer-form">
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title">罰威力移転の決定</h4>
+            <p class="text-muted">各入力欄には 0 以上の数値を {{ transfer_unit }} 刻みで入力してください。</p>
+
+            <div class="table-responsive">
+                <table class="table table-bordered text-center" id="transfer-table">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>プレイヤー</th>
+                            <th>移転前の罰威力</th>
+                            <th>移転後（暫定）</th>
+                            <th>転出量</th>
+                            {% for other in group.get_players %}
+                                {% if other.id_in_group != player.id_in_group %}
+                                    <th>向プレイヤー {{ other.id_in_group }} へ</th>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="table-primary">
+                            <td><strong>あなた (プレイヤー {{ player.id_in_group }})</strong></td>
+                            <td><span id="initial-power">{{ current_power_display }}</span></td>
+                            <td><span id="remaining-power">{{ current_power_display }}</span></td>
+                            <td>- <span id="total-transfer-out">0.0</span></td>
+                            {% for other in group.get_players %}
+                                {% if other.id_in_group != player.id_in_group %}
+                                    <td>
+                                        <input type="number"
+                                               name="power_transfer_p{{ other.id_in_group }}"
+                                               class="form-control form-control-sm js-transfer-input"
+                                               min="0"
+                                               step="{{ transfer_unit }}"
+                                               value="0"
+                                               data-target="{{ other.id_in_group }}"
+                                               data-target-label="プレイヤー {{ other.id_in_group }}"
+                                               aria-label="プレイヤー {{ other.id_in_group }} への罰威力転出量">
+                                    </td>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {% if is_costly %}
+            <div class="alert alert-warning" role="alert">
+                <strong>注意：</strong> {{ transfer_unit_display }} ポイントの移転ごとに <strong>{{ cost_per_unit }}</strong> {{ currency_label }} のコストが発生します。
+            </div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-6 mb-2">
+                    <div class="border rounded p-3 bg-light">
+                        <div><strong>暫定の罰威力:</strong> <span id="preview-power">{{ current_power_display }}</span></div>
+                        <div class="small text-muted">= 移転前の罰威力 - 転出量 + (受取量は待機後に反映されます)</div>
+                    </div>
+                </div>
+                {% if is_costly %}
+                <div class="col-md-6 mb-2">
+                    <div class="border rounded p-3 bg-light">
+                        <div><strong>移転コスト:</strong> <span id="preview-cost">0.0</span> {{ currency_label }}</div>
+                        <div class="small text-muted">= 転出単位数 × 単位当たりコスト</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="alert alert-danger mt-3 d-none" id="transfer-error"></div>
+
+            <div class="text-right mt-3">
+                {% next_button %}
+            </div>
+        </div>
+    </div>
+</form>
+
+<div id="transfer-config" style="display:none"
+     data-current-power="{{ current_power }}"
      data-transfer-unit="{{ transfer_unit }}"
-     data-is-costly="{{ is_costly|yesno:'true,false' }}"
-     data-cost-rate="{{ transfer_cost_rate|default:'0' }}">
+     data-cost-per-unit="{{ cost_per_unit }}"
+     data-is-costly="{% if is_costly %}true{% else %}false{% endif %}"
+     data-minimum="0"
+     data-max-transfer="{{ max_transfer }}">
+
 </div>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // 从隐藏元素获取配置
-    var config = document.getElementById('transfer-config');
-    var maxTransfer = parseFloat(config.getAttribute('data-max-transfer'));
-    var transferUnit = parseFloat(config.getAttribute('data-transfer-unit'));
-    var isCostly = config.getAttribute('data-is-costly') === 'true';
-    var costRate = parseFloat(config.getAttribute('data-cost-rate'));
-    
-    // DOM要素
-    var inputs = document.querySelectorAll('.transfer-input');
-    var totalSpan = document.getElementById('total-transfer');
-    var errorMsg = document.getElementById('error-message');
-    var submitBtn = document.getElementById('submit-btn');
-    var totalCostSpan = document.getElementById('total-cost');
-    
-    function updateTotals() {
-        var totalTransfer = 0;
-        var totalCost = 0;
-        
-        inputs.forEach(function(input) {
-            var value = parseFloat(input.value) || 0;
-            totalTransfer += value;
-            
-            if (isCostly) {
-                var cost = (value / transferUnit) * costRate;
-                totalCost += cost;
-                
-                var playerId = input.getAttribute('data-player');
-                var costCell = document.getElementById('cost-' + playerId);
-                if (costCell) {
-                    costCell.textContent = cost.toFixed(1);
-                }
+document.addEventListener('DOMContentLoaded', function () {
+    var configEl = document.getElementById('transfer-config');
+    if (!configEl) {
+        return;
+    }
+
+    var maxTransfer = parseFloat(configEl.dataset.maxTransfer || '0');
+    var currentPower = parseFloat(configEl.dataset.currentPower || '0');
+    if (!Number.isFinite(maxTransfer) || maxTransfer <= 0) {
+        maxTransfer = currentPower;
+    }
+
+    var transferUnit = parseFloat(configEl.dataset.transferUnit || '0.1');
+    if (!Number.isFinite(transferUnit) || transferUnit <= 0) {
+        transferUnit = 0.1;
+    }
+
+    var unitString = transferUnit.toString();
+    var decimalPart = unitString.indexOf('.') >= 0 ? unitString.split('.')[1] : '';
+    var decimals = decimalPart.length;
+    if (decimals === 0 && transferUnit < 1) {
+        decimals = 1;
+    }
+    decimals = Math.min(Math.max(decimals, 1), 4);
+    var displayDecimals = Math.max(decimals, 1);
+
+    var isCostly = configEl.dataset.isCostly === 'true';
+    var costPerUnit = parseFloat(configEl.dataset.costPerUnit || '0');
+
+    var inputs = Array.from(document.querySelectorAll('.js-transfer-input'));
+    var totalOutEl = document.getElementById('total-transfer-out');
+    var remainingEl = document.getElementById('remaining-power');
+    var previewPowerEl = document.getElementById('preview-power');
+    var costEl = document.getElementById('preview-cost');
+    var errorEl = document.getElementById('transfer-error');
+    var form = document.getElementById('power-transfer-form');
+    var submitButton = form ? form.querySelector('button.otree-next-button') : null;
+
+    function clampToUnit(value) {
+        var scaled = Math.round(value / transferUnit) * transferUnit;
+        return Math.max(0, parseFloat(scaled.toFixed(decimals + 1)));
+    }
+
+    function updateTotals(enforceFormat) {
+        var totalOut = 0;
+
+        inputs.forEach(function (input) {
+            var rawText = input.value;
+            var raw = parseFloat(rawText);
+            if (Number.isNaN(raw) || raw < 0) {
+                raw = 0;
             }
+            var normalized = clampToUnit(raw);
+            if (enforceFormat) {
+                input.value = normalized.toFixed(displayDecimals);
+            }
+            totalOut += normalized;
         });
-        
-        totalSpan.textContent = totalTransfer.toFixed(1);
-        
-        if (isCostly && totalCostSpan) {
-            totalCostSpan.textContent = totalCost.toFixed(1);
+
+        totalOut = parseFloat(totalOut.toFixed(decimals + 1));
+        var exceeds = totalOut > maxTransfer + 1e-6;
+
+        if (totalOutEl) {
+            totalOutEl.textContent = totalOut.toFixed(displayDecimals);
         }
-        
-        // 验证
-        errorMsg.style.display = 'none';
-        submitBtn.disabled = false;
-        
-        if (totalTransfer > maxTransfer) {
-            errorMsg.textContent = '移譲総量（' + totalTransfer.toFixed(1) + '）が初期罰威力（' + maxTransfer + '）を超えています';
-            errorMsg.style.display = 'block';
-            submitBtn.disabled = true;
+
+        var remaining = currentPower - totalOut;
+        if (remainingEl) {
+            remainingEl.textContent = remaining.toFixed(displayDecimals);
+        }
+        if (previewPowerEl) {
+            previewPowerEl.textContent = remaining.toFixed(displayDecimals);
+        }
+
+        if (isCostly && costEl) {
+            var units = totalOut / transferUnit;
+            var totalCost = units * costPerUnit;
+            costEl.textContent = totalCost.toFixed(displayDecimals);
+        }
+
+        if (errorEl) {
+            if (exceeds) {
+                errorEl.textContent = '転出量の合計が保有する罰威力 (' + currentPower.toFixed(displayDecimals) + ') を超えています。値を修正してください。';
+                errorEl.classList.remove('d-none');
+            } else {
+                errorEl.classList.add('d-none');
+                errorEl.textContent = '';
+            }
+        }
+
+        if (submitButton) {
+            submitButton.disabled = exceeds;
         }
     }
-    
-    // 添加事件监听器
-    inputs.forEach(function(input) {
-        input.addEventListener('input', updateTotals);
-        input.addEventListener('change', updateTotals);
+
+    inputs.forEach(function (input) {
+        input.addEventListener('input', function () { updateTotals(false); });
+        input.addEventListener('change', function () { updateTotals(true); });
+        input.addEventListener('blur', function () { updateTotals(true); });
     });
-    
-    // 初始更新
-    updateTotals();
+
+    updateTotals(true);
 });
 </script>
 {% endblock %}
