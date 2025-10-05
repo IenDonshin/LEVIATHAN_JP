@@ -16,7 +16,6 @@
             あなたの初期保有額は <strong>{{ session.config.endowment }}</strong> MUs (Monetary Units) です。
         </p>
         <p>
-            今ラウンドで移転コストなどを差し引いた後に使える残額は <strong>{{ available_endowment }}</strong> です。
             このラウンドで公共プールにいくら拠出しますか？ (0 から {{ available_endowment }} の範囲で整数)
         </p>
         
@@ -26,7 +25,7 @@
             {% if history_rounds %}
             <button type="button" class="btn btn-info" data-toggle="modal" data-bs-toggle="modal"
                     data-target="#historyModal" data-bs-target="#historyModal" data-history-modal="true">
-                <i class="fas fa-history"></i> 全履歴を見る
+                <i class="fas fa-history"></i> 全履歴をチェック
             </button>
             {% else %}
             <span></span> {# 次へボタンを右側に維持するためのスペース #}

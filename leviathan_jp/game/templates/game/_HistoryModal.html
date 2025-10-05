@@ -35,7 +35,7 @@
                            <strong>ラウンド {{ round_data.round_number }} の結果</strong>
                         </div>
                         <div class="card-body">
-                            {# --- 上段のサマリー表 --- #}
+                            {# --- Summary --- #}
                             <table class="table table-bordered text-center table-sm">
                                 <tbody>
                                     <tr class="thead-light">
@@ -105,9 +105,9 @@
                             </table>
                             {% endif %}
 
-                            {# --- 下段の罰マトリクス --- #}
+                            {# --- Summary Matrix --- #}
                             {% if round_data.has_punishment %}
-                            <h6 class="mt-3">罰の交換マトリックス</h6>
+                            <h6 class="mt-3">罰交換のMatrix</h6>
                             <table class="table table-bordered text-center table-sm">
                                 <thead class="thead-light">
                                     <tr>
@@ -133,7 +133,7 @@
                     </div>
                 {% endfor %}
                 {% else %}
-                    <p class="text-center text-muted">まだ表示できる履歴がありません。</p>
+                    <p class="text-center text-muted">表示できる履歴がありません。</p>
                 {% endif %}
             </div>
             <div class="modal-footer">

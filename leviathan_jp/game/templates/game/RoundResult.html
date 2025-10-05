@@ -8,14 +8,14 @@
 {% block content %}
 
 {# ================================================================= #}
-{# 1. このプレイヤーの個人収益サマリー                              #}
+{# 1. このプレイヤーの個人収益 Summary                              #}
 {# ================================================================= #}
 <div class="card bg-light mb-3">
     <div class="card-body">
-        <h4 class="card-title">あなたの利得サマリー</h4>
+        <h4 class="card-title">あなたの利得 Summary</h4>
         <table class="table table-borderless" style="font-size: 1.1em;">
             <tr>
-                <td>貢献フェーズでの利得</td>
+                <td>貢献段階での利得</td>
                 <td class="text-right">{{ payoff_from_contribution }} </td>
                 <td>(初期保有額 - あなたの貢献 + 公共プールからの取り分)</td>
             </tr>
@@ -81,7 +81,7 @@
                     {% endfor %}
                 </tr>
                 <tr>
-                    <td><strong>転出 / 転入</strong></td>
+                    <td><strong>転出/転入</strong></td>
                     {% for summary in players_summary %}
                         <td>{% if summary.id_in_group == player.id_in_group %}<strong>- {{ summary.power_transfer_out_display }} / + {{ summary.power_transfer_in_display }}</strong>{% else %}- {{ summary.power_transfer_out_display }} / + {{ summary.power_transfer_in_display }}{% endif %}</td>
                     {% endfor %}
@@ -96,19 +96,19 @@
                 {% endif %}
                 {% endif %}
                 <tr>
-                    <td><strong>本回合貢献金額</strong></td>
+                    <td><strong>本回合貢献MUs</strong></td>
                     {% for summary in players_summary %}
                         <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.contribution }} / {{ summary.available_before_contribution }}</strong>{% else %}{{ summary.contribution }} / {{ summary.available_before_contribution }}{% endif %}</td>
                     {% endfor %}
                 </tr>
                 <tr>
-                    <td><strong>本回合消費懲罰点</strong></td>
+                    <td><strong>本回合消費罰ポイント</strong></td>
                     {% for summary in players_summary %}
                         <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.punishment_sent_total }} / {{ deduction_points }}</strong>{% else %}{{ summary.punishment_sent_total }} / {{ deduction_points }}{% endif %}</td>
                     {% endfor %}
                 </tr>
                 <tr>
-                    <td><strong>本回合受けた罰（合計）</strong></td>
+                    <td><strong>本ラウンド受けた罰（合計）</strong></td>
                     {% for summary in players_summary %}
                         <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.punishment_received_total }}</strong>{% else %}{{ summary.punishment_received_total }}{% endif %}</td>
                     {% endfor %}
@@ -123,7 +123,7 @@
 {# ================================================================= #}
 <div class="card">
     <div class="card-body">
-        <h4 class="card-title">罰の交換マトリックス</h4>
+        <h4 class="card-title">罰の交換 Matrix</h4>
         <table class="table table-bordered text-center punishment-matrix">
             <thead class="thead-dark">
                 <tr>

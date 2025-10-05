@@ -48,7 +48,7 @@
                 </tbody>
             </table>
         </div>
-        <p class="mt-3 mb-0 small text-muted">最初の移転ラウンドでは罰威力は 1.0 から開始します。</p>
+        <p class="mt-3 mb-0 small text-muted">最初の移転ラウンドでは罰威力の効果係数は 1.0 から開始します。</p>
     </div>
 </div>
 
@@ -56,7 +56,7 @@
     <div class="card">
         <div class="card-body">
             <h4 class="card-title">罰威力移転の決定</h4>
-            <p class="text-muted">各入力欄には 0 以上の数値を {{ transfer_unit }} 刻みで入力してください。</p>
+            <p class="text-muted">各欄には 0 以上の数値を {{ transfer_unit }} で入力してください。</p>
 
             <div class="table-responsive">
                 <table class="table table-bordered text-center" id="transfer-table">
@@ -101,7 +101,7 @@
 
             {% if is_costly %}
             <div class="alert alert-warning" role="alert">
-                <strong>注意：</strong> {{ transfer_unit_display }} ポイントの移転ごとに <strong>{{ cost_per_unit }}</strong> {{ currency_label }} のコストが発生します。
+                <strong>注意：</strong> {{ transfer_unit_display }} 罰威力の移転単位数ごとに <strong>{{ cost_per_unit }}</strong> {{ currency_label }} のコストが発生します。
             </div>
             {% endif %}
 
@@ -109,7 +109,7 @@
                 <div class="col-md-6 mb-2">
                     <div class="border rounded p-3 bg-light">
                         <div><strong>暫定の罰威力:</strong> <span id="preview-power">{{ current_power_display }}</span></div>
-                        <div class="small text-muted">= 移転前の罰威力 - 転出量 + (受取量は待機後に反映されます)</div>
+                        <div class="small text-muted">= 移転前の罰威力 - 転出量 + (受取量は後で反映されます)</div>
                     </div>
                 </div>
                 {% if is_costly %}

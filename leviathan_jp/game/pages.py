@@ -453,12 +453,18 @@ class Punishment(Page):
     @staticmethod
     def vars_for_template(player):
         id_range = list(range(1, Constants.players_per_group + 1))
+        endowment = player.session.config['endowment']
+        contribution = player.contribution if hasattr(player, 'contribution') else 0
+
+        remaining_mu = endowment - contribution
+
         return dict(
             players_contribution=player.group.get_players(),
             deduction_points=player.session.config['deduction_points'],
             id_range=id_range,
             history_rounds=build_history_rounds(player),
             can_receive_map={p.id_in_group: p.can_receive_punishment for p in player.group.get_players()},
+            remaining_mu = remaining_mu
         )
 
     @staticmethod
@@ -470,7 +476,7 @@ class Punishment(Page):
                 total_punishment += values[field_name]
 
         if total_punishment > player.session.config['deduction_points']:
-            return f"您送出的总惩罚点数不能超过 {player.session.config['deduction_points']}。"
+            return f"送られた点数 {player.session.config['deduction_points']}　を越えてはいけません。"
         punishment_cost = player.session.config.get('punishment_cost', 1)
         total_cost = total_punishment * punishment_cost
         available = float(player.available_endowment or 0)
@@ -479,7 +485,7 @@ class Punishment(Page):
                 max_points = int(available // punishment_cost)
             else:
                 max_points = total_punishment
-            return f"您当前可用于惩罚的MUs不足，最多只能使用 {max_points} 点惩罚。"
+            return f"現在、使えるMUsは {max_points} です。もう一度試して下さい。"
 
     @staticmethod
     def before_next_page(player, timeout_happened):

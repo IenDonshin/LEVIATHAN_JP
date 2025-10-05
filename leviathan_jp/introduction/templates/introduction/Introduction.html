@@ -9,15 +9,33 @@
 
 <div class="card">
     <div class="card-body">
+
+        <!-- 共通の説明ブロック -->
+        <p><strong>各ラウンドの流れと利得の計算方法</strong></p>
+        <ul>
+            <li>各参加者は一定の初期資源 [MUs(Monetary Units)] を持ちます。</li>
+            <li>公共財への拠出額を決め、全員の合計は [公共財の乗数] 倍されて均等に分配されます。</li>
+            <li>その後、各参加者は他の参加者に [各ラウンドの最大罰ポイント] 以内の罰ポイントを割り当てられます。</li>
+            <li>罰ポイント1点を使うと、自分は [相応の懲罰コスト] MU を失い、相手は [与えられた罰ポイント]·[罰威力の効果係数] MUs を失います。</li>
+        </ul>
+        <p><strong>
+        利得 ＝ [(初期資源) − (公共財への拠出額)] 
+        ＋  [(全員の拠出合計) × (公共財の乗数) ÷ (参加者人数)]  
+        −  [(自分が使った罰ポイント) × (懲罰コスト)]
+        -  {[(罰威力の転移コスト) × (罰威力の転出量)][罰威力の転移できる時だけの部分]}
+        −  [他者から与えられた罰ポイント × 罰威力の効果(罰威力の移譲に関わる)]
+        </strong></p>
+        <hr>
+
         {% if treatment_name == 'fixed' %}
             <p><strong>こちらは「罰威力が固定されている条件」の説明です。</strong></p>
             <p>この条件では、参加者が持つ罰威力は固定であり、他の参加者に移譲することはできません。</p>
             <ul>
                 <li>各ラウンドの初期保有額：{{ session.config.endowment }} MUs</li>
                 <li>公共財の乗数：{{ session.config.contribution_multiplier }}</li>
-                <li>初期罰威力ポイント：{{ session.config.deduction_points }} 点</li>
+                <li>各ラウンドの最大罰ポイント：{{ session.config.deduction_points }} 点</li>
                 <li>懲罰コスト：{{ session.config.punishment_cost }} MUs／点</li>
-                <li>罰威力の効果：{{ session.config.punishment_effectiveness }} </li>
+                <li>罰威力の効果係数：{{ session.config.punishment_effectiveness }} </li>
             </ul>
         {% elif treatment_name == 'transfer_free' %}
             <p><strong>こちらは「罰威力を無コストで移譲できる条件」の説明です。</strong></p>
@@ -28,7 +46,7 @@
                 <li>初期罰威力ポイント：{{ session.config.deduction_points }} 点</li>
                 <li>罰威力の移譲：可能（移譲コストなし）</li>
                 <li>懲罰コスト：{{ session.config.punishment_cost }} MUs／点</li>
-                <li>罰威力の効果：{{ session.config.punishment_effectiveness }} </li>
+                <li>罰威力の効果係数：{{ session.config.punishment_effectiveness }} </li>
             </ul>
         {% elif treatment_name == 'transfer_cost' %}
             <p><strong>こちらは「罰威力をコストを払って移譲できる条件」の説明です。</strong></p>
@@ -39,7 +57,7 @@
                 <li>初期罰威力ポイント：{{ session.config.deduction_points }} 点</li>
                 <li>罰威力の移譲：可能（移譲コスト率 {{ session.config.punishment_transfer_cost_rate }}）</li>
                 <li>懲罰コスト：{{ session.config.punishment_cost }} MUs／点</li>
-                <li>罰威力の効果：{{ session.config.punishment_effectiveness }} </li>
+                <li>罰威力の効果係数：{{ session.config.punishment_effectiveness }} </li>
             </ul>
         {% else %}
             <p>実験全体の概要を説明するページです。</p>
