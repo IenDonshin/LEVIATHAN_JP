@@ -12,7 +12,7 @@
         <h4 class="card-title">グループ全体の貢献状況</h4>
         <p>
             グループの総貢献額は <strong>{{ group.total_contribution }}</strong> でした。
-            各メンバーは公共プロジェクトから <strong>{{ share }}</strong> の取り分を受け取ります。
+            各メンバーは公共プールから <strong>{{ share }}</strong> の取り分を受け取ります。
         </p>
 
         <table class="table table-bordered">
@@ -20,8 +20,8 @@
                 <tr class="text-center">
                     <th>プレイヤー ID</th>
                     <th>本回合貢献金額</th>
-                    <th>公共池からの受取 / 公共池への貢献</th>
-                    <th>現在の保有額</th>
+                    <th>公共プールからの受取 / 公共プールへの貢献</th>
+                    <th>最後の保有額</th>
                 </tr>
             </thead>
             <tbody>
@@ -48,7 +48,7 @@
 
 <div class="text-right mt-3">
     {% if player.round_number == 1 %}
-        <p>第1ラウンドでは罰を与えるフェーズはありません。次のラウンドに進みます。</p>
+        <p>第1ラウンドでは罰を与える段階はありません。次のラウンドに進みます。</p>
     {% endif %}
     {% next_button %}
 </div>
