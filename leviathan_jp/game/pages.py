@@ -42,6 +42,7 @@ def build_history_rounds(player):
                     endowment=endowment_currency,
                     available_endowment=member.available_endowment,
                     punishment_sent_total=effective_sent_points,
+                    punishment_received_total=member.punishment_received,
                     power_before=member.punishment_power_before,
                     power_after=member.punishment_power_after,
                     power_after_display=f"{member.punishment_power_after:.1f}",
@@ -53,22 +54,31 @@ def build_history_rounds(player):
                 )
             )
 
-        effectiveness_base = session.config.get('punishment_effectiveness', 1)
+        effectiveness_base = session.config.get('power_effectiveness', Constants.power_effectiveness)
         matrix_rows = []
         for victim in members:
-            victim_before = float(victim.available_before_punishment or victim.available_endowment or 0)
-            victim_after = float(victim.available_endowment or 0)
-            actual_loss = max(0.0, victim_before - victim_after)
+            actual_loss = float(victim.punishment_received or 0)
+            if actual_loss <= 0:
+                victim_before = float(victim.available_before_punishment or victim.available_endowment or 0)
+                victim_after = float(victim.available_endowment or 0)
+                diff = victim_before - victim_after
+                if diff > actual_loss:
+                    actual_loss = max(0.0, diff)
 
             attempted_loss = 0.0
             attempted_points = {}
+            effective_power_map = {}
             for giver in members:
                 if giver.id_in_group == victim.id_in_group:
                     continue
                 points = getattr(giver, f'punish_p{victim.id_in_group}', 0) or 0
                 attempted_points[giver.id_in_group] = points
+                effective_power = (
+                    giver.punishment_power_after
+                    or giver.participant.vars.get('punishment_power', 1.0)
+                )
+                effective_power_map[giver.id_in_group] = effective_power
                 if points > 0:
-                    effective_power = giver.punishment_power_after or giver.participant.vars.get('punishment_power', 1.0)
                     attempted_loss += points * effectiveness_base * effective_power
 
             if attempted_loss <= 0:
@@ -77,21 +87,41 @@ def build_history_rounds(player):
                 scale = min(1.0, actual_loss / attempted_loss)
 
             cells = []
+            total_received = 0.0
             for giver in members:
                 is_self = giver.id_in_group == victim.id_in_group
                 if is_self:
                     cells.append(dict(is_self=True, amount=None, amount_display=None))
                 else:
                     points_attempted = attempted_points.get(giver.id_in_group, 0)
-                    actual_points = round(points_attempted * scale, 4)
-                    cells.append(dict(is_self=False, amount=actual_points, amount_display=actual_points))
-            matrix_rows.append(dict(victim_id=victim.id_in_group, cells=cells))
+                    points_used = round(points_attempted * scale, 6)
+                    effective_power = effective_power_map.get(
+                        giver.id_in_group,
+                        giver.punishment_power_after
+                        or giver.participant.vars.get('punishment_power', 1.0),
+                    )
+                    actual_loss_value = points_used * effectiveness_base * effective_power
+                    total_received += actual_loss_value
+                    loss_display = c(actual_loss_value)
+                    cells.append(
+                        dict(
+                            is_self=False,
+                            amount=loss_display,
+                            amount_display=loss_display,
+                        )
+                    )
 
-        for entry in player_entries:
-            member = next(m for m in members if m.id_in_group == entry['id_in_group'])
-            effective_received = getattr(member, 'punishment_points_received_actual', None)
-            if effective_received is not None:
-                entry['punishment_received_total'] = effective_received
+            if victim.punishment_received is not None:
+                summary_loss = victim.punishment_received
+            else:
+                summary_loss = c(total_received)
+
+            for entry in player_entries:
+                if entry['id_in_group'] == victim.id_in_group:
+                    entry['punishment_received_total'] = summary_loss
+                    break
+
+            matrix_rows.append(dict(victim_id=victim.id_in_group, cells=cells))
 
         transfer_rows = []
         if has_power_transfer:
@@ -171,17 +201,32 @@ class Contribution(Page):
         player.available_before_punishment = remaining
         if remaining <= c(0):
             player.can_receive_punishment = False
+        player.participant.vars['contribution_submitted_round'] = player.round_number
 
 # =============================================================================
 # CLASS: ContributionWaitPage
 # =============================================================================
 class ContributionWaitPage(WaitPage):
+    template_name = "game/ContributionWait.html"
+
     @staticmethod
     def after_all_players_arrive(group):
         group.set_group_contribution()
         if group.round_number == 1:
             for player in group.get_players():
                 player.set_payoff()
+
+    @staticmethod
+    def vars_for_template(player):
+        players = player.group.get_players()
+        current_round = player.round_number
+        submitted = sum(
+            1
+            for p in players
+            if p.participant.vars.get('contribution_submitted_round') == current_round
+        )
+        total = len(players)
+        return dict(waiting_progress=submitted, waiting_total=total)
 
 # =============================================================================
 # CLASS: ContributionResult
@@ -241,7 +286,7 @@ class PowerTransfer(Page):
     def vars_for_template(player):
         session = player.session
         transfer_unit = session.config.get("punishment_transfer_unit", 0.1)
-        cost_per_unit = session.config.get("punishment_transfer_cost_rate", 0)
+        cost_per_unit = session.config.get("power_transfer_cost_rate", 0)
         others_data = []
         for other in player.get_others_in_group():
             others_data.append(
@@ -266,6 +311,7 @@ class PowerTransfer(Page):
             transfer_cost_rate=cost_per_unit,
             transfer_cost_per_unit=cost_per_unit,
             cost_per_unit=cost_per_unit,
+            cost_per_unit_display=f"{cost_per_unit:.1f}",
             currency_label=session.config.get('real_world_currency_code', 'MU'),
             players_status=[],
         )
@@ -279,15 +325,15 @@ class PowerTransfer(Page):
             if value is None:
                 continue
             if value < -tolerance:
-                return "転出量は0以上で入力してください。"
+                return "譲渡量は0以上で入力してください。"
             total += value
             if transfer_unit > 0:
                 multiples = value / transfer_unit
                 if abs(multiples - round(multiples)) > 1e-6:
-                    return f"転出量は {transfer_unit} の倍数で入力してください。"
+                    return f"譲渡量は {transfer_unit} の倍数で入力してください。"
 
         if total - player.punishment_power_before > tolerance:
-            return "転出量の合計が保有する罰威力を超えています。"
+            return "譲渡量の合計が保有する罰威力を超えています。"
 
     @staticmethod
     def before_next_page(player, timeout_happened):
@@ -303,7 +349,7 @@ class PowerTransfer(Page):
         player.power_transfer_out_total = round(total_out, 3)
 
         unit = session.config.get("punishment_transfer_unit", 0.1)
-        rate = session.config.get("punishment_transfer_cost_rate", 0)
+        rate = session.config.get("power_transfer_cost_rate", 0)
         if session.config.get("costly_punishment_transfer") and unit > 0:
             units = total_out / unit
             cost_value = units * rate
@@ -315,6 +361,7 @@ class PowerTransfer(Page):
             0,
             player.punishment_power_before - player.power_transfer_out_total,
         )
+        player.participant.vars['power_transfer_submitted_round'] = player.round_number
 
 
 class PowerTransferWait(WaitPage):
@@ -347,6 +394,16 @@ class PowerTransferWait(WaitPage):
             )
             player.participant.vars["punishment_power"] = player.punishment_power_after
 
+            # Carry over the updated punishment power to the next round so that
+            # the transfer results persist. creating_session runs before the
+            # experiment starts, meaning the defaults written there (1.0) need
+            # to be replaced once we know the actual outcome of this round.
+            if player.round_number < Constants.num_rounds:
+                next_player = player.in_round(player.round_number + 1)
+                next_player.punishment_power_before = player.punishment_power_after
+                next_player.punishment_power_after = player.punishment_power_after
+                next_player.participant.vars["punishment_power"] = player.punishment_power_after
+
             endowment = player.session.config.get('endowment', Constants.endowment)
             cost_value = float(player.power_transfer_cost or 0)
             remaining = max(0, endowment - cost_value)
@@ -356,6 +413,18 @@ class PowerTransferWait(WaitPage):
                 player.can_receive_punishment = False
             else:
                 player.can_receive_punishment = True
+
+    @staticmethod
+    def vars_for_template(player):
+        players = player.group.get_players()
+        current_round = player.round_number
+        submitted = sum(
+            1
+            for p in players
+            if p.participant.vars.get('power_transfer_submitted_round') == current_round
+        )
+        total = len(players)
+        return dict(waiting_progress=submitted, waiting_total=total)
 
 
 class PowerTransferResult(Page):
@@ -374,6 +443,10 @@ class PowerTransferResult(Page):
         columns = []
         for member in group_players:
             transfer_cost_value = member.power_transfer_cost
+            if transfer_cost_value is None:
+                transfer_cost_display = "0.0"
+            else:
+                transfer_cost_display = f"{float(transfer_cost_value):.1f}"
             columns.append(
                 dict(
                     id_in_group=member.id_in_group,
@@ -381,7 +454,7 @@ class PowerTransferResult(Page):
                     header=f"プレイヤー {member.id_in_group}",
                     final_power_display=f"{member.punishment_power_after:.1f} / 1.0",
                     net_transfer_display=f"- {member.power_transfer_out_total:.1f} / + {member.power_transfer_in_total:.1f}",
-                    transfer_cost_display=str(transfer_cost_value) if transfer_cost_value else "0",
+                    transfer_cost_display=transfer_cost_display,
                     current_balance_display="-",
                 )
             )
@@ -500,11 +573,14 @@ class Punishment(Page):
         player.available_before_punishment = player.available_endowment or c(0)
         player.attempted_punishment_cost = total_cost
         player.attempted_punishment_points = total_punishment
+        player.participant.vars['punishment_submitted_round'] = player.round_number
 
 # =============================================================================
 # CLASS: PunishmentWaitPage
 # =============================================================================
 class PunishmentWaitPage(WaitPage):
+    template_name = "game/PunishmentWait.html"
+
     @staticmethod
     def is_displayed(player):
         return player.round_number > 1
@@ -512,6 +588,18 @@ class PunishmentWaitPage(WaitPage):
     @staticmethod
     def after_all_players_arrive(group):
         group.set_payoff()
+
+    @staticmethod
+    def vars_for_template(player):
+        players = player.group.get_players()
+        current_round = player.round_number
+        submitted = sum(
+            1
+            for p in players
+            if p.participant.vars.get('punishment_submitted_round') == current_round
+        )
+        total = len(players)
+        return dict(waiting_progress=submitted, waiting_total=total)
 
 # =============================================================================
 # CLASS: RoundResult
@@ -571,22 +659,31 @@ class RoundResult(Page):
                     total_sent += getattr(member, field_name, 0) or 0
             players_map[member.id_in_group]['punishment_sent_total'] = total_sent
 
-        effectiveness_base = session.config.get('punishment_effectiveness', 1)
+        effectiveness_base = session.config.get('power_effectiveness', Constants.power_effectiveness)
         matrix_rows = []
         for victim in players:
-            victim_before = float(victim.available_before_punishment or victim.available_endowment or 0)
-            victim_after = float(victim.available_endowment or 0)
-            actual_loss = max(0.0, victim_before - victim_after)
+            actual_loss = float(victim.punishment_received or 0)
+            if actual_loss <= 0:
+                victim_before = float(victim.available_before_punishment or victim.available_endowment or 0)
+                victim_after = float(victim.available_endowment or 0)
+                diff = victim_before - victim_after
+                if diff > actual_loss:
+                    actual_loss = max(0.0, diff)
 
             attempted_loss = 0.0
             attempted_points = {}
+            effective_power_map = {}
             for giver in players:
                 if giver.id_in_group == victim.id_in_group:
                     continue
                 points = getattr(giver, f'punish_p{victim.id_in_group}', 0) or 0
                 attempted_points[giver.id_in_group] = points
+                effective_power = (
+                    giver.punishment_power_after
+                    or giver.participant.vars.get('punishment_power', 1.0)
+                )
+                effective_power_map[giver.id_in_group] = effective_power
                 if points > 0:
-                    effective_power = giver.punishment_power_after or giver.participant.vars.get('punishment_power', 1.0)
                     attempted_loss += points * effectiveness_base * effective_power
 
             if attempted_loss <= 0:
@@ -602,10 +699,29 @@ class RoundResult(Page):
                     cells.append(dict(is_self=True, amount=None, amount_display=None))
                 else:
                     points_attempted = attempted_points.get(giver.id_in_group, 0)
-                    actual_points = round(points_attempted * scale, 4)
-                    total_received += actual_points
-                    cells.append(dict(is_self=False, amount=actual_points, amount_display=actual_points))
-            players_map[victim.id_in_group]['punishment_received_total'] = total_received
+                    points_used = round(points_attempted * scale, 6)
+                    effective_power = effective_power_map.get(
+                        giver.id_in_group,
+                        giver.punishment_power_after
+                        or giver.participant.vars.get('punishment_power', 1.0),
+                    )
+                    actual_loss_value = points_used * effectiveness_base * effective_power
+                    total_received += actual_loss_value
+                    loss_display = c(actual_loss_value)
+                    cells.append(
+                        dict(
+                            is_self=False,
+                            amount=loss_display,
+                            amount_display=loss_display,
+                        )
+                    )
+
+            if victim.punishment_received is not None:
+                summary_loss = victim.punishment_received
+            else:
+                summary_loss = c(total_received)
+
+            players_map[victim.id_in_group]['punishment_received_total'] = summary_loss
             matrix_rows.append(dict(victim_id=victim.id_in_group, cells=cells))
 
         players_summary = [players_map[idx] for idx in sorted(players_map.keys())]

@@ -46,6 +46,67 @@
 
 {# 履歴モーダルで使用するカスタム JS ヘルパー #}
 {% block internal_scripts %}
+    <style>
+        .numeric-step-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 7rem;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .numeric-step-wrapper .numeric-step-input {
+            width: 100%;
+            text-align: center;
+            padding-right: 1.75rem;
+            margin: 0;
+            border: none;
+            height: 100%;
+        }
+
+        .numeric-step-wrapper .numeric-step-buttons {
+            position: absolute;
+            top: 1px;
+            bottom: 1px;
+            right: 1px;
+            width: 1.6rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .numeric-step-wrapper .numeric-step-buttons button {
+            flex: 1;
+            border: 0;
+            border-left: 1px solid #ced4da;
+            background: #f8f9fa;
+            font-size: 0.7rem;
+            line-height: 1;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        .numeric-step-wrapper .numeric-step-buttons button:first-child {
+            border-top-right-radius: 0.25rem;
+            border-bottom: 1px solid #ced4da;
+        }
+
+        .numeric-step-wrapper .numeric-step-buttons button:last-child {
+            border-bottom-right-radius: 0.25rem;
+        }
+
+    .numeric-step-wrapper input[type=number]::-webkit-inner-spin-button,
+    .numeric-step-wrapper input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .numeric-step-wrapper input[type=number] {
+        appearance: none;
+        -moz-appearance: textfield;
+    }
+    </style>
     <script>
         function sum_list(list) {
             if (!Array.isArray(list)) return 0;
@@ -55,26 +116,105 @@
             otree.api.setTemplateFilters({ sum_list: sum_list });
         }
 
+        function enhanceNumericInput(input, options) {
+            if (!input || input.dataset.numericStepper === 'true') {
+                return;
+            }
+            var step = options.step || 1;
+            var min = typeof options.min === 'number' ? options.min : 0;
+            var max = typeof options.max === 'number' ? options.max : Infinity;
+            var decimals = options.decimals != null ? options.decimals : (Number.isInteger(step) ? 0 : (step.toString().split('.')[1] || '').length);
+
+            var wrapper = document.createElement('div');
+            wrapper.className = 'numeric-step-wrapper';
+            if (options.width) {
+                wrapper.style.width = options.width;
+            }
+
+            var parent = input.parentNode;
+            parent.insertBefore(wrapper, input);
+            wrapper.appendChild(input);
+
+            input.classList.add('numeric-step-input');
+            input.dataset.numericStepper = 'true';
+
+            var buttons = document.createElement('div');
+            buttons.className = 'numeric-step-buttons';
+
+            var upBtn = document.createElement('button');
+            upBtn.type = 'button';
+            upBtn.textContent = '▲';
+            buttons.appendChild(upBtn);
+
+            var downBtn = document.createElement('button');
+            downBtn.type = 'button';
+            downBtn.textContent = '▼';
+            buttons.appendChild(downBtn);
+
+            wrapper.appendChild(buttons);
+
+            function formatValue(value) {
+                return value.toFixed(decimals);
+            }
+
+            function adjust(direction) {
+                var current = parseFloat(input.value);
+                if (Number.isNaN(current)) {
+                    current = 0;
+                }
+                var next = current + direction * step;
+                if (next < min) {
+                    next = min;
+                }
+                if (Number.isFinite(max)) {
+                    next = Math.min(next, max);
+                }
+                next = Math.round(next / step) * step;
+                input.value = formatValue(next);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            upBtn.addEventListener('click', function (event) {
+                event.preventDefault();
+                adjust(1);
+            });
+
+            downBtn.addEventListener('click', function (event) {
+                event.preventDefault();
+                adjust(-1);
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             var contributionInput = document.querySelector('input[name="contribution"]');
             if (!contributionInput) {
                 return;
             }
 
-            var current = contributionInput.value;
-            if (current === '' || current === null) {
+            var maxVal = parseFloat('{{ available_endowment }}');
+            if (!Number.isFinite(maxVal)) {
+                maxVal = 0;
+            }
+
+            var current = parseFloat(contributionInput.value);
+            if (Number.isNaN(current) || current < 0) {
                 contributionInput.value = '0';
             } else {
-                var parsed = parseInt(current, 10);
-                if (Number.isNaN(parsed)) {
-                    contributionInput.value = '0';
-                } else {
-                    contributionInput.value = parsed.toString();
-                }
+                contributionInput.value = Math.round(current).toString();
             }
+
             contributionInput.setAttribute('step', '1');
             contributionInput.setAttribute('min', '0');
-            contributionInput.setAttribute('max', '{{ available_endowment }}');
+            contributionInput.setAttribute('max', maxVal.toString());
+
+            enhanceNumericInput(contributionInput, {
+                step: 1,
+                min: 0,
+                max: maxVal,
+                decimals: 0,
+                width: '7rem'
+            });
         });
     </script>
 {% endblock %}

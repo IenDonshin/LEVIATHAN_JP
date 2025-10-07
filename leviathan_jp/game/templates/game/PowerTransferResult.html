@@ -2,7 +2,7 @@
 {% load otree static %}
 
 {% block title %}
-    第 {{ player.round_number }} ラウンド：罰威力移転の結果
+    第 {{ player.round_number }} ラウンド：罰威力移譲の結果
 {% endblock %}
 
 {% block content %}
@@ -10,14 +10,28 @@
 <div class="card mb-3">
     <div class="card-body">
         <h4 class="card-title">本ラウンドのサマリー</h4>
-        <p class="mb-0">各列はプレイヤーごとの罰威力と移転の状況を表します。あなたの列は強調表示されています。</p>
+        <p class="mb-0">各列はプレイヤーごとの罰威力と移譲の状況を表します。あなたの列は強調表示されています。</p>
     </div>
 </div>
 
 <div class="card">
     <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-bordered text-center">
+        <div class="power-transfer-result-wrapper">
+            <style>
+                .power-transfer-result-table {
+                    table-layout: auto;
+                }
+
+                .power-transfer-result-table th,
+                .power-transfer-result-table td {
+                    white-space: nowrap;
+                    padding-left: 12px;
+                    padding-right: 12px;
+                    min-width: 7rem;
+                    font-size: 0.9rem;
+                }
+            </style>
+            <table class="table table-bordered text-center power-transfer-result-table">
                 <thead class="thead-dark">
                     <tr>
                         <th></th>
@@ -38,21 +52,21 @@
                         {% endfor %}
                     </tr>
                     <tr>
-                        <th>転出/転入</th>
+                        <th>譲渡/受取</th>
                         {% for col in columns %}
                             <td class="{% if col.is_self %}table-primary{% endif %}">{{ col.net_transfer_display }}</td>
                         {% endfor %}
                     </tr>
                     {% if is_costly %}
                     <tr>
-                        <th>移転コスト</th>
+                        <th>移譲コスト</th>
                         {% for col in columns %}
                             <td class="{% if col.is_self %}table-primary{% endif %}">{{ col.transfer_cost_display }}</td>
                         {% endfor %}
                     </tr>
                     {% endif %}
                     <tr class="table-secondary">
-                        <th>転出方向</th>
+                        <th>譲渡方向</th>
                         {% for header in transfer_headers %}
                             <td>{{ header }}</td>
                         {% endfor %}
@@ -62,13 +76,15 @@
                             <tr class="{% if row.is_self %}table-primary{% endif %}">
                                 <th>{% if row.is_self %}あなた{% else %}{{ row.row_label }}{% endif %}</th>
                                 {% for cell in row.cells %}
-                                    <td class="{% if row.is_self or (cell.highlight and not cell.is_self) %}table-primary{% endif %}">{{ cell.display|default:'-' }}</td>
+                                    <td class="{% if row.is_self or cell.highlight and not cell.is_self %}table-primary{% endif %}">
+                                        {% if cell.display %}{{ cell.display }}{% else %}-{% endif %}
+                                    </td>
                                 {% endfor %}
                             </tr>
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="{{ columns_length_plus_one }}" class="text-muted">詳細な移転データはまだ利用できません。</td>
+                            <td colspan="{{ columns_length_plus_one }}" class="text-muted">詳細な移譲データはまだ利用できません。</td>
                         </tr>
                     {% endif %}
                 </tbody>

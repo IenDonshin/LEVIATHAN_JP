@@ -31,7 +31,7 @@
             </tr>
             {% if show_power_transfer and player.session.config.costly_punishment_transfer %}
             <tr>
-                <td>罰威力移転によるコスト</td>
+                <td>罰威力移譲によるコスト</td>
                 <td class="text-right text-danger">- {{ player.power_transfer_cost }} </td>
                 <td></td>
             </tr>
@@ -64,7 +64,7 @@
 {# ================================================================= #}
 <div class="card mb-3">
     <div class="card-body">
-        <h4 class="card-title">ラウンド {{ player.round_number }} のサマリー</h4>
+        <h4 class="card-title">ラウンド {{ player.round_number }} のSummary</h4>
         <table class="table table-bordered text-center punishment-matrix">
             <tbody>
                 <tr class="thead-dark">
@@ -81,14 +81,14 @@
                     {% endfor %}
                 </tr>
                 <tr>
-                    <td><strong>転出/転入</strong></td>
+                    <td><strong>譲渡/受取</strong></td>
                     {% for summary in players_summary %}
                         <td>{% if summary.id_in_group == player.id_in_group %}<strong>- {{ summary.power_transfer_out_display }} / + {{ summary.power_transfer_in_display }}</strong>{% else %}- {{ summary.power_transfer_out_display }} / + {{ summary.power_transfer_in_display }}{% endif %}</td>
                     {% endfor %}
                 </tr>
                 {% if player.session.config.costly_punishment_transfer %}
                 <tr>
-                    <td><strong>移転コスト</strong></td>
+                    <td><strong>移譲コスト</strong></td>
                     {% for summary in players_summary %}
                         <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.power_transfer_cost }}</strong>{% else %}{{ summary.power_transfer_cost }}{% endif %}</td>
                     {% endfor %}
@@ -96,19 +96,19 @@
                 {% endif %}
                 {% endif %}
                 <tr>
-                    <td><strong>本回合貢献MUs</strong></td>
+                    <td><strong>貢献MUs</strong></td>
                     {% for summary in players_summary %}
                         <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.contribution }} / {{ summary.available_before_contribution }}</strong>{% else %}{{ summary.contribution }} / {{ summary.available_before_contribution }}{% endif %}</td>
                     {% endfor %}
                 </tr>
                 <tr>
-                    <td><strong>本回合消費罰ポイント</strong></td>
+                    <td><strong>消費罰ポイント</strong></td>
                     {% for summary in players_summary %}
                         <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.punishment_sent_total }} / {{ deduction_points }}</strong>{% else %}{{ summary.punishment_sent_total }} / {{ deduction_points }}{% endif %}</td>
                     {% endfor %}
                 </tr>
                 <tr>
-                    <td><strong>本ラウンド受けた罰（合計）</strong></td>
+                    <td><strong>受けた罰（合計）</strong></td>
                     {% for summary in players_summary %}
                         <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.punishment_received_total }}</strong>{% else %}{{ summary.punishment_received_total }}{% endif %}</td>
                     {% endfor %}

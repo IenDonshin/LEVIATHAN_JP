@@ -45,7 +45,7 @@
                                         {% endfor %}
                                     </tr>
                                     <tr>
-                                        <td><strong>回合貢献金額</strong></td>
+                                        <td><strong>ラウンド貢献金額</strong></td>
                                         {% for entry in round_data.players %}
                                             <td>{{ entry.contribution }} / {{ entry.endowment }}</td>
                                         {% endfor %}
@@ -58,13 +58,13 @@
                                         {% endfor %}
                                     </tr>
                                     <tr>
-                                        <td><strong>転出 / 転入</strong></td>
+                                        <td><strong>譲渡 / 受取</strong></td>
                                         {% for entry in round_data.players %}
                                             <td>- {{ entry.power_transfer_out_display }} / + {{ entry.power_transfer_in_display }}</td>
                                         {% endfor %}
                                     </tr>
                                     <tr>
-                                        <td><strong>移転コスト</strong></td>
+                                        <td><strong>移譲コスト</strong></td>
                                         {% for entry in round_data.players %}
                                             <td>{{ entry.power_transfer_cost }}</td>
                                         {% endfor %}
@@ -72,7 +72,7 @@
                                     {% endif %}
                                     {% if round_data.has_punishment %}
                                     <tr>
-                                        <td><strong>回合消耗懲罰点</strong></td>
+                                        <td><strong>消費罰ポイント</strong></td>
                                         {% for entry in round_data.players %}
                                             <td>{{ entry.punishment_sent_total }}</td>
                                         {% endfor %}
@@ -82,11 +82,11 @@
                             </table>
 
                             {% if round_data.has_power_transfer %}
-                            <h6 class="mt-3">罰威力の移転履歴</h6>
+                            <h6 class="mt-3">罰威力の移譲履歴</h6>
                             <table class="table table-bordered text-center table-sm">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th>↓移転先 / 移転元→</th>
+                                        <th>↓移譲先 / 移譲元→</th>
                                         {% for entry in round_data.players %}
                                             <th>プレイヤー {{ entry.id_in_group }} から</th>
                                         {% endfor %}

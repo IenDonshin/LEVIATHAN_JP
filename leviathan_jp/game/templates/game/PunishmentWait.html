@@ -1,16 +1,23 @@
-{% extends "global/Page.html" %}
+{% extends "otree/WaitPage.html" %}
 {% load otree static %}
 
 {% block title %}
     待機中...
 {% endblock %}
 
-{% block content %}
-
-<div class="card">
-    <div class="card-body">
-        <p>他の参加者が操作を完了するまで、しばらくお待ちください。</p>
+{% block body_main %}
+<div class="otree-wait-page" style="position: relative; min-height: calc(100vh - 6rem); width: 100vw; margin-left: calc(-50vw + 50%);">
+    <div class="card" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: auto;">
+        <div class="card-body text-center">
+            <p class="mb-0" style="white-space: nowrap;">現在は罰フェーズです。他の参加者が罰ポイントの入力を終えるまで、お待ちください。（{{ waiting_progress }}/{{ waiting_total }} 名が完了）</p>
+        </div>
     </div>
 </div>
-
+{% if waiting_progress < waiting_total %}
+<script>
+    setTimeout(function () {
+        window.location.reload();
+    }, 2000);
+</script>
+{% endif %}
 {% endblock %}

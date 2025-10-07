@@ -24,7 +24,7 @@ class Constants(BaseConstants):
     multiplier = 1.5
     deduction_points = 10
     punishment_cost = 1
-    punishment_effectiveness = 1
+    power_effectiveness = 1
 
 class Subsession(BaseSubsession):
     def creating_session(self):
@@ -84,7 +84,7 @@ class Group(BaseGroup):
         session = self.session
         players = self.get_players()
         cost_per_point = session.config.get('punishment_cost', 1)
-        effectiveness_base = session.config.get('punishment_effectiveness', 1)
+        effectiveness_base = session.config.get('power_effectiveness', Constants.power_effectiveness)
 
         actual_cost = {p: 0.0 for p in players}
         actual_points_sent = {p: 0.0 for p in players}
@@ -155,18 +155,18 @@ class Player(BasePlayer):
             return self.available_endowment
         return self.session.config['endowment']
 
-    # 各プレイヤーに与える罰点を入力するフィールド
+    # 各プレイヤーに与える罰ポイントを入力するフィールド
     # グループは最大5人を想定し、id_in_group は 1〜5
-    punish_p1 = models.IntegerField(min=0, initial=0, label="プレイヤー1への罰点")
-    punish_p2 = models.IntegerField(min=0, initial=0, label="プレイヤー2への罰点")
-    punish_p3 = models.IntegerField(min=0, initial=0, label="プレイヤー3への罰点")
-    punish_p4 = models.IntegerField(min=0, initial=0, label="プレイヤー4への罰点")
-    punish_p5 = models.IntegerField(min=0, initial=0, label="プレイヤー5への罰点")
+    punish_p1 = models.IntegerField(min=0, initial=0, label="プレイヤー1への罰ポイント")
+    punish_p2 = models.IntegerField(min=0, initial=0, label="プレイヤー2への罰ポイント")
+    punish_p3 = models.IntegerField(min=0, initial=0, label="プレイヤー3への罰ポイント")
+    punish_p4 = models.IntegerField(min=0, initial=0, label="プレイヤー4への罰ポイント")
+    punish_p5 = models.IntegerField(min=0, initial=0, label="プレイヤー5への罰ポイント")
 
     punishment_given = models.CurrencyField(doc="与えた罰の総コスト")
     punishment_received = models.CurrencyField(doc="受けた罰による総損失")
 
-    # 罰威力の移転に関するフィールド
+    # 罰威力の移譲に関するフィールド
     power_transfer_p1 = models.FloatField(min=0, initial=0, blank=True)
     power_transfer_p2 = models.FloatField(min=0, initial=0, blank=True)
     power_transfer_p3 = models.FloatField(min=0, initial=0, blank=True)
@@ -208,7 +208,7 @@ class Player(BasePlayer):
         if punishment_points_received in (None, 0):
             punishment_points_received = 0
             punishment_loss = 0
-            effectiveness_base = self.session.config.get('punishment_effectiveness', 1)
+            effectiveness_base = self.session.config.get('power_effectiveness', Constants.power_effectiveness)
             if self.can_receive_punishment:
                 for other_player in self.get_others_in_group():
                     field_name = f'punish_p{self.id_in_group}'

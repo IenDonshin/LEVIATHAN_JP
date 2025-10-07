@@ -6,13 +6,18 @@
 {% endblock %}
 
 {% block body_main %}
-<div class="otree-wait-page">
-    <div class="card">
+<div class="otree-wait-page" style="position: relative; min-height: calc(100vh - 6rem); width: 100vw; margin-left: calc(-50vw + 50%);">
+    <div class="card" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: auto;">
         <div class="card-body text-center">
-            <h4 class="mb-3">罰威力の移転を待機しています。</h4>
-            <p>他の参加者が操作を完了するまでお待ちください。</p>
-            <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+            <p class="mb-0" style="white-space: nowrap;">現在は罰威力移譲フェーズです。他の参加者が罰威力の移譲を完了するまで、お待ちください。（{{ waiting_progress }}/{{ waiting_total }} 名が完了）</p>
         </div>
     </div>
 </div>
+{% if waiting_progress < waiting_total %}
+<script>
+    setTimeout(function () {
+        window.location.reload();
+    }, 2000);
+</script>
+{% endif %}
 {% endblock %}
