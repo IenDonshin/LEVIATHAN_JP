@@ -19,13 +19,17 @@
 ## How to Test the Project Automaticly
 
 Test the project from the command lines：
+
     ```    c
     otree test pggp_fixed
     ```
+
     ```    c
     otree test pggp_transfer_free
     ```
+
     ```    c
     otree test pggp_transfer_cost
     ```
+
  These command lines can only submit fixed values (contribution, punishment and power transfer). After modifying the code, use these command lines to test whether the experimental process can be completed smoothly.
