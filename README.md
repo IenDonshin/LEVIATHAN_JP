@@ -24,9 +24,11 @@ Test the project from the command lines：
     otree test pggp_fixed
     ```
 
+
     ```    c
     otree test pggp_transfer_free
     ```
+
 
     ```    c
     otree test pggp_transfer_cost
