@@ -6,7 +6,7 @@
 
 2. Start the project from the command line:
 
-    ```    c
+    ```    
     otree devserver 0.0.0.0:8000
     ```
 
@@ -20,17 +20,17 @@
 
 Test the project from the command lines：
 
-    ```    c
+    ``` 
     otree test pggp_fixed
     ```
 
 
-    ```    c
+    ``` 
     otree test pggp_transfer_free
     ```
 
 
-    ```    c
+    ```
     otree test pggp_transfer_cost
     ```
 
