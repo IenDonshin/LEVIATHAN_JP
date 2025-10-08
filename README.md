@@ -4,7 +4,7 @@
 
 This is an otree project for the public goods game with punishment. There are three treatments in this experiment: 
 
-1.fixed: The participant's power to punish is fixed. 
+1.fixed: Participants' power to punish is fixed. 
 
 2.transfer_free: Participants can transfer their power to punish to others at no cost.
 
@@ -13,7 +13,7 @@ This is an otree project for the public goods game with punishment. There are th
 
 ## How to Run the Project
 
-1. Clone the repository to your local machine.
+1. Clone the repository to the PC which you choose as the server.
 
 2. Start the project from the command line:
 
@@ -21,11 +21,10 @@ This is an otree project for the public goods game with punishment. There are th
 otree devserver 0.0.0.0:8000
 ```
 
-3. Access the experiment:
+3. Access the experiment by links:
 
-    - Make sure your device is connected to the same local network (LAN) as the PC running the project.
+    - Make sure the participant's device is connected to the same local network (LAN) as the server.
 
-    - Open a browser on that device and enter the IP address of the PC running the project using the http protocol.
 
 ## How to Test the Project Automaticly
 
