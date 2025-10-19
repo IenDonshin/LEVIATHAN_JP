@@ -30,6 +30,7 @@ SESSION_CONFIG_DEFAULTS = dict(
     participation_fee=500,
     doc="公共財ゲーム。Roomsで条件を振り分け。",
     mturk_hit_settings=dict(),
+    num_demo_participants=5,
 )
 
 SESSION_CONFIGS = [
@@ -52,7 +53,7 @@ SESSION_CONFIGS = [
         practice_rounds=0,
         treatment_name='fixed',
         use_browser_bots=False,
-        browser_bot_stop_round=19,
+        browser_bot_stop_round=3,
     ),
     dict(
         name='pggp_transfer_free',
@@ -71,7 +72,9 @@ SESSION_CONFIGS = [
         power_transfer_cost_rate=0.0,
         punishment_transfer_unit=0.1,
         practice_rounds=0,
-        treatment_name='transfer_free'
+        treatment_name='transfer_free',
+        use_browser_bots=False,
+        browser_bot_stop_round=3,
     ),
     dict(
         name='pggp_transfer_cost',
@@ -90,7 +93,9 @@ SESSION_CONFIGS = [
         power_transfer_cost_rate=1.0,
         punishment_transfer_unit=0.1,
         practice_rounds=0,
-        treatment_name='transfer_cost'
+        treatment_name='transfer_cost',
+        use_browser_bots=False,
+        browser_bot_stop_round=3,
     ),
 ]
 

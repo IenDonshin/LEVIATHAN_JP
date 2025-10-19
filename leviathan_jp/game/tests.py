@@ -26,43 +26,40 @@ class PlayerBot(Bot):
     def play_round(self):
         treatment = self.session.config.get('treatment_name', 'fixed')
 
-        if treatment in {'transfer_free', 'transfer_cost'}:
-            # Power transfer from round 3 onwards
-            if self.player.round_number >= 3:
-                yield Submission(
-                    pages.PowerTransfer,
-                    power_transfer_form(self.player, 0.1),
-                    check_html=False,
-                )
-                yield pages.PowerTransferResult
+        bot_rules = {
+            'fixed': dict(contribution=0, punishment=0, power_transfer=0.0),
+            'transfer_free': dict(contribution=10, punishment=1, power_transfer=0.1),
+            'transfer_cost': dict(contribution=10, punishment=1, power_transfer=0.1),
+        }
 
-            # Contribution: 10 MUs each round
-            yield Submission(pages.Contribution, {'contribution': 10}, check_html=False)
-            yield pages.ContributionResult
+        rules = bot_rules.get(treatment, bot_rules['fixed'])
 
-            if self.player.round_number > 1:
-                # Punish every other participant with 1 point (cost 1 MU per point)
-                yield Submission(
-                    pages.Punishment,
-                    punishment_form(self.player, 1),
-                    check_html=False,
-                )
-                yield pages.RoundResult
+        power_transfer_allowed = self.session.config.get('power_transfer_allowed')
+        if power_transfer_allowed and self.player.round_number >= 3:
+            transfer_amount = rules.get('power_transfer', 0.0) or 0.0
+            yield Submission(
+                pages.PowerTransfer,
+                power_transfer_form(self.player, transfer_amount),
+                check_html=False,
+            )
+            yield pages.PowerTransferResult
 
-            if self.player.round_number == Constants.num_rounds:
-                yield pages.FinalResult
+        contribution_amount = rules.get('contribution', 0) or 0
+        yield Submission(
+            pages.Contribution,
+            {'contribution': contribution_amount},
+            check_html=False,
+        )
+        yield pages.ContributionResult
 
-        else:  # fixed treatment default bot
-            yield Submission(pages.Contribution, {'contribution': 0}, check_html=False)
-            yield pages.ContributionResult
+        if self.player.round_number > 1:
+            punishment_points = rules.get('punishment', 0) or 0
+            yield Submission(
+                pages.Punishment,
+                punishment_form(self.player, punishment_points),
+                check_html=False,
+            )
+            yield pages.RoundResult
 
-            if self.player.round_number > 1:
-                yield Submission(
-                    pages.Punishment,
-                    punishment_form(self.player, 0),
-                    check_html=False,
-                )
-                yield pages.RoundResult
-
-            if self.player.round_number == Constants.num_rounds:
-                yield pages.FinalResult
+        if self.player.round_number == Constants.num_rounds:
+            yield pages.FinalResult
