@@ -53,7 +53,7 @@ SESSION_CONFIGS = [
         practice_rounds=0,
         treatment_name='fixed',
         use_browser_bots=False,
-        browser_bot_stop_round=3,
+        browser_bot_stop_round=2,
     ),
     dict(
         name='pggp_transfer_free',
@@ -74,7 +74,7 @@ SESSION_CONFIGS = [
         practice_rounds=0,
         treatment_name='transfer_free',
         use_browser_bots=False,
-        browser_bot_stop_round=3,
+        browser_bot_stop_round=2,
     ),
     dict(
         name='pggp_transfer_cost',
@@ -95,7 +95,7 @@ SESSION_CONFIGS = [
         practice_rounds=0,
         treatment_name='transfer_cost',
         use_browser_bots=False,
-        browser_bot_stop_round=3,
+        browser_bot_stop_round=2,
     ),
 ]
 
