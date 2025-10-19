@@ -1,6 +1,6 @@
 # Build the Leviathan (Power Transfer Game) in Japan
 
-## about the Project
+## Project Overview
 
 This is an otree project for the public goods game with punishment. There are three treatments in this experiment: 
 
@@ -12,6 +12,8 @@ This is an otree project for the public goods game with punishment. There are th
 
 
 ## How to Run the Project
+
+For now, development and testing are being conducted on the local network.
 
 1. Clone the repository to the PC which you choose as the server.
 
@@ -43,3 +45,6 @@ otree test pggp_transfer_cost
 ```
 These command lines can only submit fixed values (contribution, punishment and power transfer). After modifying the code, use these command lines to test whether the experimental process can be completed smoothly.
 
+## How to Go Directly to a Specific Round
+
+Click on "Sessions", then "Create new session". Next, go to "Configure session" and check the box for "use_browser_bot". Please note that it defaults to jumping to round 3, but this can be modified. To finish, click the blue "Create" button. After all participant pages for the session have been opened, each one will automatically navigate to the specific round.
