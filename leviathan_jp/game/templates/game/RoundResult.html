@@ -2,173 +2,90 @@
 {% load otree static %}
 
 {% block title %}
-    第 {{ player.round_number }} ラウンド：最終結果
+    ラウンド結果
 {% endblock %}
 
 {% block content %}
 
-{# ================================================================= #}
-{# 1. このプレイヤーの個人収益 Summary                              #}
-{# ================================================================= #}
-<div class="card bg-light mb-3">
-    <div class="card-body">
-        <h4 class="card-title">あなたの利得 Summary</h4>
-        <table class="table table-borderless" style="font-size: 1.1em;">
-            <tr>
-                <td>貢献段階での利得</td>
-                <td class="text-right">{{ payoff_from_contribution }} </td>
-                <td>(初期保有額 - あなたの貢献 + 公共プールからの取り分)</td>
-            </tr>
-            <tr>
-                <td>罰を与えたコスト</td>
-                <td class="text-right text-danger">- {{ player.punishment_given }} </td>
-                <td></td>
-            </tr>
-            <tr>
-                <td>受けた罰による損失</td>
-                <td class="text-right text-danger">- {{ player.punishment_received }} </td>
-                <td></td>
-            </tr>
-            {% if show_power_transfer and player.session.config.costly_punishment_transfer %}
-            <tr>
-                <td>罰威力移譲によるコスト</td>
-                <td class="text-right text-danger">- {{ player.power_transfer_cost }} </td>
-                <td></td>
-            </tr>
-            {% endif %}
-            <tr style="border-top: 2px solid #333; font-weight: bold;">
-                <td>このラウンドの最終利得</td>
-                <td class="text-right">{{ player.payoff }} </td>
-                <td></td>
-            </tr>
-        </table>
-        <hr>
-        <p style="font-size: 1.2em;">
-            あなたの累積利得: <strong>{{ cumulative_payoff }} </strong>
-        </p>
+<div class="stage-layout">
+    <div class="stage-header">
+        <div>
+            <div class="stage-title">ラウンド概要</div>
+            <div class="stage-subtitle">第 {{ player.round_number }} ラウンド</div>
+        </div>
+        <div class="stage-desc">
+            このラウンドの貢献・罰ポイント・損失の概要です。<br>
+            あなたの累積利得は {{ cumulative_payoff }} です。
+        </div>
     </div>
-</div>
 
-<style>
-    .punishment-matrix th, .punishment-matrix td {
-        font-size: 0.85rem;
-        white-space: nowrap;
-        padding: 0.5rem 0.75rem;
-    }
-    .punishment-matrix th {
-        font-weight: 600;
-    }
-</style>
-{# ================================================================= #}
-{# 第一の表: 貢献と罰の概要                           #}
-{# ================================================================= #}
-<div class="card mb-3">
-    <div class="card-body">
-        <h4 class="card-title">ラウンド {{ player.round_number }} のSummary</h4>
-        <table class="table table-bordered text-center punishment-matrix">
-            <tbody>
-                <tr class="thead-dark">
-                    <th></th>
-                    {% for summary in players_summary %}
-                        <th>{% if summary.id_in_group == player.id_in_group %}あなた{% else %}プレイヤー {{ summary.id_in_group }}{% endif %}</th>
-                    {% endfor %}
-                </tr>
-                {% if show_power_transfer %}
-                <tr>
-                    <td><strong>罰威力</strong></td>
-                    {% for summary in players_summary %}
-                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.power_after_display }} / 1.0</strong>{% else %}{{ summary.power_after_display }} / 1.0{% endif %}</td>
-                    {% endfor %}
-                </tr>
-                <tr>
-                    <td><strong>譲渡/受取</strong></td>
-                    {% for summary in players_summary %}
-                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>- {{ summary.power_transfer_out_display }} / + {{ summary.power_transfer_in_display }}</strong>{% else %}- {{ summary.power_transfer_out_display }} / + {{ summary.power_transfer_in_display }}{% endif %}</td>
-                    {% endfor %}
-                </tr>
-                {% if player.session.config.costly_punishment_transfer %}
-                <tr>
-                    <td><strong>移譲コスト</strong></td>
-                    {% for summary in players_summary %}
-                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.power_transfer_cost }}</strong>{% else %}{{ summary.power_transfer_cost }}{% endif %}</td>
-                    {% endfor %}
-                </tr>
+    <div class="stage-center">
+        <div class="stage-stack" style="width: 100%; gap: 2rem;">
+            <div class="action-row">
+                <div class="summary-chip">貢献段階利得: {{ payoff_from_contribution }}</div>
+                <div class="summary-chip">与えた罰コスト: {{ player.punishment_given }}</div>
+                <div class="summary-chip">受けた罰損失: {{ player.punishment_received }}</div>
+                {% if show_power_transfer and player.session.config.costly_punishment_transfer %}
+                <div class="summary-chip">移譲コスト: {{ player.power_transfer_cost }}</div>
                 {% endif %}
-                {% endif %}
-                <tr>
-                    <td><strong>貢献MUs</strong></td>
-                    {% for summary in players_summary %}
-                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.contribution }} / {{ summary.available_before_contribution }}</strong>{% else %}{{ summary.contribution }} / {{ summary.available_before_contribution }}{% endif %}</td>
-                    {% endfor %}
-                </tr>
-                <tr>
-                    <td><strong>消費罰ポイント</strong></td>
-                    {% for summary in players_summary %}
-                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.punishment_sent_total }} / {{ deduction_points }}</strong>{% else %}{{ summary.punishment_sent_total }} / {{ deduction_points }}{% endif %}</td>
-                    {% endfor %}
-                </tr>
-                <tr>
-                    <td><strong>受けた罰（合計）</strong></td>
-                    {% for summary in players_summary %}
-                        <td>{% if summary.id_in_group == player.id_in_group %}<strong>{{ summary.punishment_received_total }}</strong>{% else %}{{ summary.punishment_received_total }}{% endif %}</td>
-                    {% endfor %}
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
+                <div class="summary-chip">このラウンド利得: {{ player.payoff }}</div>
+            </div>
 
-{# ================================================================= #}
-{# 第三の表: 画像で指定された罰のマトリクス                        #}
-{# ================================================================= #}
-<div class="card">
-    <div class="card-body">
-        <h4 class="card-title">罰の交換 Matrix</h4>
-        <table class="table table-bordered text-center punishment-matrix">
-            <thead class="thead-dark">
-                <tr>
-                    <th> </th>
-                    {% for giver_id in matrix_headers %}
-                        <th>{% if giver_id == player.id_in_group %}あなた{% else %}プレイヤー {{ giver_id }}{% endif %} からの罰</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for matrix_row in matrix_rows %}
-                <tr class="{% if matrix_row.victim_id == player.id_in_group %}table-primary{% endif %}">
-                    <td><strong>{% if matrix_row.victim_id == player.id_in_group %}あなた{% else %}プレイヤー {{ matrix_row.victim_id }}{% endif %}</strong></td>
-                    {% for cell in matrix_row.cells %}
-                        <td>{% if cell.is_self %}-{% else %}{{ cell.amount }}{% endif %}</td>
-                    {% endfor %}
-                </tr>
+            <div class="player-grid" style="gap: 2.2rem;">
+                {% for summary in players_summary %}
+                <div class="player-card player-card--wide" style="--idx: {{ forloop.counter0 }};">
+                    <div class="player-label">
+                        {% if summary.id_in_group == player.id_in_group %}
+                            <strong>あなた（プレイヤー {{ summary.id_in_group }}）</strong>
+                        {% else %}
+                            プレイヤー {{ summary.id_in_group }}
+                        {% endif %}
+                    </div>
+                    <div class="bar-track" data-value="{{ summary.contribution }}" data-max="{{ summary.available_before_contribution }}">
+                        <div class="bar-fill"></div>
+                        <span class="bar-text">貢献 {{ summary.contribution }} / {{ summary.available_before_contribution }}</span>
+                    </div>
+                    <div class="bar-track bar-track--warn" style="margin-top: 0.6rem;" data-value="{{ summary.punishment_sent_total }}" data-max="{{ deduction_points }}">
+                        <div class="bar-fill"></div>
+                        <span class="bar-text">罰ポイント {{ summary.punishment_sent_total }} / {{ deduction_points }}</span>
+                    </div>
+                    <div class="matrix-note" style="margin-top: 0.6rem;">受けた罰: {{ summary.punishment_received_total }}</div>
+                    {% if show_power_transfer %}
+                    <div class="matrix-note">罰威力: {{ summary.power_after_display }} / 1.0</div>
+                    {% endif %}
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
+            </div>
+
+            <div style="width: 100%;">
+                <div class="stage-title" style="font-size: 0.95rem; margin-bottom: 0.6rem;">罰の交換マトリクス</div>
+                <table class="matrix-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            {% for giver_id in matrix_headers %}
+                                <th>{% if giver_id == player.id_in_group %}あなた{% else %}プレイヤー {{ giver_id }}{% endif %} から</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for matrix_row in matrix_rows %}
+                        <tr>
+                            <td class="matrix-note"><strong>{% if matrix_row.victim_id == player.id_in_group %}あなた{% else %}プレイヤー {{ matrix_row.victim_id }}{% endif %}</strong></td>
+                            {% for cell in matrix_row.cells %}
+                                <td class="{% if cell.is_self %}is-self{% endif %}">{% if cell.is_self %}-{% else %}{{ cell.amount }}{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="stage-footer">
+        {% next_button %}
     </div>
 </div>
-
-<div class="text-right mt-3">
-    {% next_button %}
-</div>
-
-{# oTree のテンプレートタグで Python の値を JS に渡す #}
-{% block internal_scripts %}
-    <script>
-        // A helper to sum a list of numbers, as there is no built-in filter
-        function sum_list(list) {
-            if (!Array.isArray(list)) return 0;
-            return list.reduce((a, b) => a + (b || 0), 0);
-        }
-        
-        // Register custom filters if supported
-        if (typeof otree !== 'undefined' && otree.api && typeof otree.api.setTemplateFilters === 'function') {
-            otree.api.setTemplateFilters({
-                sum_list: sum_list
-            });
-        } else {
-            console.warn('Custom JS template filters are not supported in this oTree version.');
-        }
-    </script>
-{% endblock %}
 
 {% endblock %}

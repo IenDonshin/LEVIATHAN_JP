@@ -51,6 +51,7 @@
                                         {% endfor %}
                                     </tr>
                                     {% if round_data.has_power_transfer %}
+                                    {% if not is_defined('show_power_info') or show_power_info %}
                                     <tr>
                                         <td><strong>罰威力</strong></td>
                                         {% for entry in round_data.players %}
@@ -70,6 +71,7 @@
                                         {% endfor %}
                                     </tr>
                                     {% endif %}
+                                    {% endif %}
                                     {% if round_data.has_punishment %}
                                     <tr>
                                         <td><strong>消費罰ポイント</strong></td>
@@ -82,6 +84,7 @@
                             </table>
 
                             {% if round_data.has_power_transfer %}
+                            {% if not is_defined('show_power_info') or show_power_info %}
                             <h6 class="mt-3">罰威力の移譲履歴</h6>
                             <table class="table table-bordered text-center table-sm">
                                 <thead class="thead-light">
@@ -103,6 +106,7 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
+                            {% endif %}
                             {% endif %}
 
                             {# --- Summary Matrix --- #}
@@ -137,7 +141,7 @@
                 {% endif %}
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">閉じる</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal" data-history-close="true">閉じる</button>
             </div>
         </div>
     </div>
@@ -155,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    var closeButtons = modalEl.querySelectorAll('[data-dismiss="modal"], [data-history-close="true"]');
+    var closeButtons = modalEl.querySelectorAll('[data-dismiss="modal"], [data-bs-dismiss="modal"], [data-history-close="true"]');
     var backdropEl = null;
 
     function createBackdrop() {

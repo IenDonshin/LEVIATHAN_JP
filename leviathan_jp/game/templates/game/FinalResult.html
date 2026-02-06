@@ -2,63 +2,47 @@
 {% load otree static %}
 
 {% block title %}
-    最終実験結果
+    最終結果
 {% endblock %}
 
 {% block content %}
 
-<div class="card">
-    <div class="card-body">
-        <h4 class="card-title">全{{ C.num_rounds }}ラウンドの累積利得</h4>
-        <p>
-            実験は終了しました。以下は、あなたのグループの全メンバーの累積利得です。
-        </p>
-
-        <table class="table table-bordered">
-            <thead class="thead-dark">
-                <tr class="text-center">
-                    <th>プレイヤー</th>
-                    <th>累積収益金額 (MUs)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in players %}
-                <tr {% if p.id_in_group == player.id_in_group %}class="table-primary"{% endif %} style="text-align: center;">
-                    <td>
-                        {% if p.id_in_group == player.id_in_group %}
-                            <strong>あなた (プレイヤー {{ p.id_in_group }})</strong>
-                        {% else %}
-                            プレイヤー {{ p.id_in_group }}
-                        {% endif %}
-                    </td>
-                    <td>{{ p.participant.payoff }}</td> {# ここでparticipant.payoffは最後のラウンドでmodels.pyによって #}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <hr>
-
-        <div class="card bg-light mt-3">
-            <div class="card-body">
-                <h4>あなたの最終報酬</h4>
-                <p>
-                    あなたの累積利得は <strong>{{ participant.payoff }} </strong> です。
-                </p>
-                <p>
-                    換金レート (1 MU = {{ session.config.real_world_currency_per_point }} {{ currency_code }}) に基づき、实验の成績による報酬は <strong>{{ performance_payoff }}</strong> です。
-                </p>
-                <p>
-                    これに参加費 <strong>{{ session.config.participation_fee }} {{ currency_code }}</strong> を加えた、あなたの最終的な受取金額は <strong>{{ final_payoff_jpy }} {{ currency_code }}</strong> です。
-                </p>
-            </div>
+<div class="stage-layout">
+    <div class="stage-header">
+        <div>
+            <div class="stage-title">最終結果</div>
+            <div class="stage-subtitle">全 {{ C.num_rounds }} ラウンドの結果</div>
         </div>
-
+        <div class="stage-desc">
+            実験は終了しました。グループ全員の累積利得を表示します。
+        </div>
     </div>
-</div>
 
-<div class="text-right mt-3">
-    {% next_button %}
+    <div class="stage-center">
+        <div class="player-grid" style="gap: 2.2rem;">
+            {% for p in players %}
+            <div class="player-card" style="--idx: {{ forloop.counter0 }};">
+                <div class="player-label">
+                    {% if p.id_in_group == player.id_in_group %}
+                        <strong>あなた（プレイヤー {{ p.id_in_group }}）</strong>
+                    {% else %}
+                        プレイヤー {{ p.id_in_group }}
+                    {% endif %}
+                </div>
+                <div class="summary-chip">{{ p.participant.payoff }} MUs</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="stage-footer">
+        <div class="matrix-note" style="max-width: 620px; text-align: center;">
+            あなたの累積利得は {{ participant.payoff }} MUs です。<br>
+            換金レート (1 MU = {{ session.config.real_world_currency_per_point }} {{ currency_code }}) に基づく成績報酬は {{ performance_payoff }}、
+            参加費 {{ session.config.participation_fee }} {{ currency_code }} を含めた最終支払額は {{ final_payoff_jpy }} {{ currency_code }} です。
+        </div>
+        {% next_button %}
+    </div>
 </div>
 
 {% endblock %}

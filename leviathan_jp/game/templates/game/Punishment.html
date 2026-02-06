@@ -2,155 +2,160 @@
 {% load otree static %}
 
 {% block title %}
-    第 {{ player.round_number }} ラウンド：罰を与えるフェーズ
+    罰ステージ
 {% endblock %}
 
 {% block content %}
 
-<div class="card bg-light mb-3">
-    <div class="card-body d-flex justify-content-between align-items-center">
+<div class="stage-layout">
+    <div class="stage-header">
         <div>
-            <p class="mb-1">このラウンドであなたが使用できる罰ポイントは、 <strong><span id="total-deduction-points">{{ session.config.deduction_points }}</span></strong> ポイントです。</p>
-            <p class="mb-0">使用済みの罰ポイント: <strong><span id="used-points">0</span></strong> / {{ session.config.deduction_points }}</p>
-            <p class="mb-0">残りのMUs: <strong>{{ remaining_mu }}</strong></p>
+            <div class="stage-title">罰ステージ</div>
+            <div class="stage-subtitle">第 {{ player.round_number }} ラウンド</div>
         </div>
-        {% if history_rounds %}
-        <button type="button" class="btn btn-info" data-toggle="modal" data-bs-toggle="modal"
-                data-target="#historyModal" data-bs-target="#historyModal" data-history-modal="true">
-            <i class="fas fa-history"></i> 全履歴をチェック
-        </button>
-        {% endif %}
+        <div class="stage-desc">
+            罰ポイント（DP）を他の参加者に割り当てます。<br>
+            各プレイヤーへの配分は 0 から {{ deduction_points }} の範囲です。
+        </div>
     </div>
-</div>
 
-<div class="card">
-    <div class="card-body">
-        <h4>罰の決定</h4>
-        <p>あなたが与えたい罰ポイント数を、対応するプレイヤーの欄に入力してください。(0以上の整数)</p>
-        <form method="post">
-            <table class="table table-bordered">
-                <thead class="thead-dark">
-                    <tr class="text-center align-middle">
-                        <th rowspan="2" class="punishment-header-arrow">↓罰を与える人 / 罰を受ける人→</th>
-                        {% for p in group.get_players %}
-                            <th>プレイヤー {{ p.id_in_group }}</th>
-                        {% endfor %}
-                    </tr>
-                    <tr class="text-center small">
-                        {% for p in group.get_players %}
-                            <th>(貢献額: {{ p.contribution }})</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="text-center"><strong>あなた (プレイヤー {{ player.id_in_group }})</strong></td>
-                        {% for p_col in group.get_players %}
-                            <td class="text-center">
-                                {% if p_col == player %}
-                                    <div style="width: 80px; margin: auto; background-color: #f0f0f0; padding: 6px 0;">--</div>
-                                {% elif p_col.can_receive_punishment %}
-                                    <input type="number" name="punish_p{{ p_col.id_in_group }}" min="0" value="0" class="form-control punishment-input" style="width: 80px; margin: auto;">
-                                {% else %}
-                                    <div style="width: 80px; margin: auto; background-color: #f8d7da; color: #721c24; padding: 6px 0;">免罰</div>
-                                {% endif %}
+    <div class="stage-center">
+        <div class="stage-stack" style="width: 100%;">
+            <div class="action-row">
+                <div class="summary-chip">使用可能DP: <span id="total-deduction-points">{{ deduction_points }}</span></div>
+                <div class="summary-chip">使用済みDP: <span id="used-points">0</span></div>
+                <div class="summary-chip">残りMUs: {{ remaining_mu }}</div>
+                {% if history_rounds %}
+                <button type="button" class="btn ui-button-ghost" data-toggle="modal" data-bs-toggle="modal"
+                        data-target="#historyModal" data-bs-target="#historyModal" data-history-modal="true">
+                    全履歴をチェック
+                </button>
+                {% endif %}
+            </div>
+
+            <div style="width: 100%;">
+                <table class="matrix-table matrix-table--inputs punishment-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            {% for col in players_data %}
+                                <th>
+                                    {% if col.is_self %}
+                                        あなた
+                                    {% else %}
+                                        プレイヤー {{ col.id_in_group }}
+                                    {% endif %}
+                                </th>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <th class="matrix-note">拠出額</th>
+                            {% for col in players_data %}
+                                <th>
+                                    <div class="bar-track bar-track--compact"
+                                         data-value="{{ col.contribution }}"
+                                         data-max="{{ endowment }}">
+                                        <div class="bar-fill"></div>
+                                        <span class="bar-text">{{ col.contribution }} / {{ endowment }}</span>
+                                    </div>
+                                </th>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <th class="matrix-note">DPコスト</th>
+                            {% for col in players_data %}
+                                <th>
+                                    {% if col.is_self %}
+                                        <div class="dp-cost-box">
+                                            <span id="dp-cost-self">0</span> / {{ max_punishment_cost_display }}
+                                        </div>
+                                    {% else %}
+                                        <div class="dp-cost-box dp-cost-box--empty">?</div>
+                                    {% endif %}
+                                </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in players_data %}
+                        <tr>
+                            <td class="matrix-note">
+                                <div class="player-row-label">
+                                    <span class="player-name">
+                                        {% if row.is_self %}
+                                            あなた
+                                        {% else %}
+                                            プレイヤー {{ row.id_in_group }}
+                                        {% endif %}
+                                    </span>
+                                    <span class="power-tag">({{ row.power_display }})</span>
+                                    <span class="cost-tag">
+                                        {% if row.is_self %}
+                                            (<span id="dp-cost-inline">0</span>)
+                                        {% else %}
+                                            (?)
+                                        {% endif %}
+                                    </span>
+                                </div>
                             </td>
+                            {% for col in players_data %}
+                                {% if row.id_in_group == col.id_in_group %}
+                                    <td class="is-self">--</td>
+                                {% elif row.is_self %}
+                                    <td>
+                                        <div class="input-with-slider input-with-slider--compact matrix-input-row">
+                                            <input type="number"
+                                                   name="punish_p{{ col.id_in_group }}"
+                                                   min="0"
+                                                   value="0"
+                                                   class="punishment-input decision-number"
+                                                   data-target="{{ col.id_in_group }}">
+                                            <input type="range"
+                                                   class="ui-slider ui-slider--compact"
+                                                   min="0"
+                                                   max="{{ deduction_points }}"
+                                                   step="1"
+                                                   value="0">
+                                            <span class="cell-effect" data-effect-for="{{ col.id_in_group }}">(0)</span>
+                                        </div>
+                                    </td>
+                                {% else %}
+                                    <td class="matrix-placeholder">?</td>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
                         {% endfor %}
-                    </tr>
-                </tbody>
-            </table>
-            <div class="text-right mt-3">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="action-row">
                 {% next_button %}
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
-{# --- 履歴モーダルをインクルード --- #}
 {% if history_rounds %}
     {% include "game/_HistoryModal.html" %}
 {% endif %}
 
 {% endblock %}
 
-
 {% block scripts %}
 <script>
-    function enhanceNumericInput(input, options) {
-        if (!input || input.dataset.numericStepper === 'true') {
-            return;
-        }
-        const step = options.step || 1;
-        const min = typeof options.min === 'number' ? options.min : 0;
-        const max = typeof options.max === 'number' ? options.max : Infinity;
-        const decimals = options.decimals != null ? options.decimals : (Number.isInteger(step) ? 0 : (step.toString().split('.')[1] || '').length);
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'numeric-step-wrapper';
-        if (options.width) {
-            wrapper.style.width = options.width;
-        }
-
-        const parent = input.parentNode;
-        parent.insertBefore(wrapper, input);
-        wrapper.appendChild(input);
-
-        input.classList.add('numeric-step-input');
-        input.dataset.numericStepper = 'true';
-
-        const buttons = document.createElement('div');
-        buttons.className = 'numeric-step-buttons';
-
-        const upBtn = document.createElement('button');
-        upBtn.type = 'button';
-        upBtn.textContent = '▲';
-        buttons.appendChild(upBtn);
-
-        const downBtn = document.createElement('button');
-        downBtn.type = 'button';
-        downBtn.textContent = '▼';
-        buttons.appendChild(downBtn);
-
-        wrapper.appendChild(buttons);
-
-        function formatValue(value) {
-            return value.toFixed(decimals);
-        }
-
-        function adjust(direction) {
-            let current = parseFloat(input.value);
-            if (Number.isNaN(current)) {
-                current = 0;
-            }
-            let next = current + direction * step;
-            if (next < min) {
-                next = min;
-            }
-            if (Number.isFinite(max)) {
-                next = Math.min(next, max);
-            }
-            next = Math.round(next / step) * step;
-            input.value = formatValue(next);
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-
-        upBtn.addEventListener('click', function (event) {
-            event.preventDefault();
-            adjust(1);
-        });
-
-        downBtn.addEventListener('click', function (event) {
-            event.preventDefault();
-            adjust(-1);
-        });
-    }
-
     document.addEventListener('DOMContentLoaded', function() {
         const inputs = document.querySelectorAll('.punishment-input');
         const usedPointsSpan = document.getElementById('used-points');
         const totalDeductionPoints = parseInt(document.getElementById('total-deduction-points').innerText);
         const maxPerTarget = Number.isNaN(totalDeductionPoints) ? Infinity : totalDeductionPoints;
+        const costPerPoint = parseFloat('{{ punishment_cost }}');
+        const maxCost = parseFloat('{{ max_punishment_cost }}');
+        const dpCostSelf = document.getElementById('dp-cost-self');
+        const dpCostInline = document.getElementById('dp-cost-inline');
+        const powerValue = parseFloat('{{ self_power_value }}');
+        const powerText = Number.isFinite(powerValue) ? powerValue : 1.0;
+        const effectBase = parseFloat('{{ power_effectiveness }}') || 1.0;
 
         function updateTotal() {
             let totalUsed = 0;
@@ -162,11 +167,34 @@
             });
             usedPointsSpan.innerText = totalUsed;
 
+            const totalCost = Number.isFinite(costPerPoint) ? totalUsed * costPerPoint : totalUsed;
+            if (dpCostSelf) {
+                dpCostSelf.innerText = totalCost.toFixed(1);
+            }
+            if (dpCostInline) {
+                dpCostInline.innerText = totalCost.toFixed(1);
+            }
+
+            document.querySelectorAll('.cell-effect').forEach(function(effectEl) {
+                const targetId = effectEl.dataset.effectFor;
+                const inputEl = document.querySelector('.punishment-input[data-target="' + targetId + '"]');
+                if (!inputEl) {
+                    return;
+                }
+                const value = parseFloat(inputEl.value);
+                if (!Number.isFinite(value) || value <= 0) {
+                    effectEl.textContent = '(0)';
+                    return;
+                }
+                const loss = value * effectBase * powerText;
+                effectEl.textContent = '(-' + loss.toFixed(1) + ')';
+            });
+
             if (totalUsed > totalDeductionPoints) {
-                usedPointsSpan.style.color = 'red';
+                usedPointsSpan.style.color = 'var(--ui-danger)';
                 usedPointsSpan.style.fontWeight = 'bold';
             } else {
-                usedPointsSpan.style.color = 'black';
+                usedPointsSpan.style.color = 'var(--ui-text)';
                 usedPointsSpan.style.fontWeight = 'normal';
             }
         }
@@ -177,95 +205,76 @@
             if (Number.isFinite(maxPerTarget)) {
                 input.setAttribute('max', maxPerTarget.toString());
             }
-            enhanceNumericInput(input, {
-                step: 1,
-                min: 0,
-                max: maxPerTarget,
-                decimals: 0,
-                width: '6.5rem'
-            });
             input.addEventListener('input', updateTotal);
         });
 
         updateTotal();
+        if (window.initInputSliders) {
+            window.initInputSliders();
+        }
     });
 </script>
 {% endblock %}
 
-
-{# 履歴モーダルで使用するカスタム JS フィルター #}
 {% block internal_scripts %}
+    {{ super() }}
     <style>
-        .punishment-header-arrow {
-            white-space: nowrap;
+        .punishment-table th {
+            vertical-align: bottom;
         }
 
-        .numeric-step-wrapper {
-            position: relative;
-            display: inline-block;
-            border: 1px solid #ced4da;
-            border-radius: 0.25rem;
-            overflow: hidden;
-            background: #fff;
+        .punishment-table .bar-track--compact {
+            width: 120px;
         }
 
-        .numeric-step-wrapper .numeric-step-input {
-            width: 100%;
-            text-align: center;
-            padding-right: 1.75rem;
-            margin: 0;
-            border: none;
-            height: 100%;
-        }
-
-        .numeric-step-wrapper .numeric-step-buttons {
-            position: absolute;
-            top: 1px;
-            bottom: 1px;
-            right: 1px;
-            width: 1.6rem;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .numeric-step-wrapper .numeric-step-buttons button {
-            flex: 1;
-            border: 0;
-            border-left: 1px solid #ced4da;
-            background: #f8f9fa;
+        .punishment-table .bar-track--compact .bar-text {
             font-size: 0.7rem;
-            line-height: 1;
-            padding: 0;
-            cursor: pointer;
         }
 
-        .numeric-step-wrapper .numeric-step-buttons button:first-child {
-            border-top-right-radius: 0.25rem;
-            border-bottom: 1px solid #ced4da;
+        .dp-cost-box {
+            border: 1px solid var(--ui-warn-strong);
+            color: var(--ui-warn-strong);
+            font-size: 0.72rem;
+            padding: 0.3rem 0.35rem;
+            border-radius: 2px;
+            text-align: center;
         }
 
-        .numeric-step-wrapper .numeric-step-buttons button:last-child {
-            border-bottom-right-radius: 0.25rem;
+        .dp-cost-box--empty {
+            color: rgba(226, 182, 69, 0.5);
         }
 
-        .numeric-step-wrapper input[type=number]::-webkit-inner-spin-button,
-        .numeric-step-wrapper input[type=number]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
+        .player-row-label {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.78rem;
         }
 
-        .numeric-step-wrapper input[type=number] {
-            appearance: none;
-            -moz-appearance: textfield;
+        .player-name {
+            min-width: 76px;
+            display: inline-block;
+        }
+
+        .power-tag {
+            color: var(--ui-accent);
+        }
+
+        .cost-tag {
+            color: var(--ui-warn-strong);
+        }
+
+        .matrix-placeholder {
+            border: 1px solid var(--ui-warn-strong);
+            color: rgba(226, 182, 69, 0.45);
+            padding: 0.5rem 0;
+        }
+
+        .cell-effect {
+            color: var(--ui-warn-strong);
+            font-size: 0.7rem;
+            min-width: 36px;
+            text-align: left;
         }
     </style>
-    <script>
-        function sum_list(list) {
-            if (!Array.isArray(list)) return 0;
-            return list.reduce((a, b) => a + (b || 0), 0);
-        }
-        if (typeof otree !== 'undefined' && otree.api && typeof otree.api.setTemplateFilters === 'function') {
-            otree.api.setTemplateFilters({ sum_list: sum_list });
-        }
-    </script>
 {% endblock %}

@@ -2,101 +2,49 @@
 {% load otree static %}
 
 {% block title %}
-    第 {{ player.round_number }} ラウンド：罰威力移譲の結果
+    罰威力移譲の結果
 {% endblock %}
 
 {% block content %}
 
-<div class="card mb-3">
-    <div class="card-body">
-        <h4 class="card-title">本ラウンドのサマリー</h4>
-        <p class="mb-0">各列はプレイヤーごとの罰威力と移譲の状況を表します。あなたの列は強調表示されています。</p>
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-body">
-        <div class="power-transfer-result-wrapper">
-            <style>
-                .power-transfer-result-table {
-                    table-layout: auto;
-                }
-
-                .power-transfer-result-table th,
-                .power-transfer-result-table td {
-                    white-space: nowrap;
-                    padding-left: 12px;
-                    padding-right: 12px;
-                    min-width: 7rem;
-                    font-size: 0.9rem;
-                }
-            </style>
-            <table class="table table-bordered text-center power-transfer-result-table">
-                <thead class="thead-dark">
-                    <tr>
-                        <th></th>
-                        {% for col in columns %}
-                            <th>{% if col.is_self %}あなた{% else %}{{ col.header }}{% endif %}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <th>ラウンド</th>
-                        <td colspan="{{ columns_length }}">第 {{ round_number }} ラウンド</td>
-                    </tr>
-                    <tr>
-                        <th>罰威力</th>
-                        {% for col in columns %}
-                            <td class="{% if col.is_self %}table-primary{% endif %}">{{ col.final_power_display }}</td>
-                        {% endfor %}
-                    </tr>
-                    <tr>
-                        <th>譲渡/受取</th>
-                        {% for col in columns %}
-                            <td class="{% if col.is_self %}table-primary{% endif %}">{{ col.net_transfer_display }}</td>
-                        {% endfor %}
-                    </tr>
-                    {% if is_costly %}
-                    <tr>
-                        <th>移譲コスト</th>
-                        {% for col in columns %}
-                            <td class="{% if col.is_self %}table-primary{% endif %}">{{ col.transfer_cost_display }}</td>
-                        {% endfor %}
-                    </tr>
-                    {% endif %}
-                    <tr class="table-secondary">
-                        <th>譲渡方向</th>
-                        {% for header in transfer_headers %}
-                            <td>{{ header }}</td>
-                        {% endfor %}
-                    </tr>
-                    {% if transfer_matrix %}
-                        {% for row in transfer_matrix %}
-                            <tr class="{% if row.is_self %}table-primary{% endif %}">
-                                <th>{% if row.is_self %}あなた{% else %}{{ row.row_label }}{% endif %}</th>
-                                {% for cell in row.cells %}
-                                    <td class="{% if row.is_self or cell.highlight and not cell.is_self %}table-primary{% endif %}">
-                                        {% if cell.display %}{{ cell.display }}{% else %}-{% endif %}
-                                    </td>
-                                {% endfor %}
-                            </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="{{ columns_length_plus_one }}" class="text-muted">詳細な移譲データはまだ利用できません。</td>
-                        </tr>
-                    {% endif %}
-                </tbody>
-            </table>
+<div class="stage-layout">
+    <div class="stage-header">
+        <div>
+            <div class="stage-title">移譲ステージ</div>
+            <div class="stage-subtitle">第 {{ round_number }} ラウンドの結果</div>
         </div>
-
-        <p class="text-muted mb-0">受け取った罰威力は次ラウンドに持ち越されます。</p>
+        <div class="stage-desc">
+            全員の決定が完了しました。各プレイヤーの罰威力は次のラウンドへ引き継がれます。
+        </div>
     </div>
-</div>
 
-<div class="text-right mt-3">
-    {% next_button %}
+    <div class="stage-center">
+        <div class="player-grid power-grid" data-power-max="{{ power_max }}">
+            {% for col in columns %}
+            <div class="player-card" style="--idx: {{ forloop.counter0 }};">
+                <div class="player-label">
+                    {% if col.is_self %}
+                        <strong>あなた（{{ col.header }}）</strong>
+                    {% else %}
+                        {{ col.header }}
+                    {% endif %}
+                </div>
+                <div class="vertical-bar" data-power="{{ col.final_power_value }}" {% if col.is_self %}data-self="true"{% endif %}>
+                    <div class="vertical-bar-fill"></div>
+                    <div class="vertical-bar-value">{{ col.final_power_display }}</div>
+                </div>
+                <div class="matrix-note" style="margin-top: 0.6rem;">{{ col.net_transfer_display }}</div>
+                {% if is_costly %}
+                <div class="matrix-note">コスト: {{ col.transfer_cost_display }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="stage-footer">
+        {% next_button %}
+    </div>
 </div>
 
 {% endblock %}

@@ -65,7 +65,6 @@ def build_history_rounds(player):
                 if diff > actual_loss:
                     actual_loss = max(0.0, diff)
 
-            attempted_loss = 0.0
             attempted_points = {}
             effective_power_map = {}
             for giver in members:
@@ -78,14 +77,6 @@ def build_history_rounds(player):
                     or giver.participant.vars.get('punishment_power', 1.0)
                 )
                 effective_power_map[giver.id_in_group] = effective_power
-                if points > 0:
-                    attempted_loss += points * effectiveness_base * effective_power
-
-            if attempted_loss <= 0:
-                scale = 0.0
-            else:
-                scale = min(1.0, actual_loss / attempted_loss)
-
             cells = []
             total_received = 0.0
             for giver in members:
@@ -94,7 +85,7 @@ def build_history_rounds(player):
                     cells.append(dict(is_self=True, amount=None, amount_display=None))
                 else:
                     points_attempted = attempted_points.get(giver.id_in_group, 0)
-                    points_used = round(points_attempted * scale, 6)
+                    points_used = points_attempted
                     effective_power = effective_power_map.get(
                         giver.id_in_group,
                         giver.punishment_power_after
@@ -155,12 +146,55 @@ def build_history_rounds(player):
 
     return rounds
 
+
+class BasePage(Page):
+    @staticmethod
+    def js_vars(player):
+        return dict(
+            dropout_warning_active=bool(
+                player.participant.vars.get('dropout_warning_active')
+            )
+        )
+
+    @staticmethod
+    def live_method(player, data):
+        if not isinstance(data, dict):
+            return
+        if data.get('dismiss_dropout_warning'):
+            player.participant.vars['dropout_warning_active'] = False
+            player.participant.vars['auto_play'] = False
+            player.participant.vars['consecutive_timeouts'] = 0
+
 # =============================================================================
 # CLASS: Contribution
 # =============================================================================
-class Contribution(Page):
+class Contribution(BasePage):
     form_model = 'player'
     form_fields = ['contribution']
+
+    @staticmethod
+    def get_timeout_seconds(player):
+        return player.session.config.get('decision_timeout_seconds', 60)
+
+    @staticmethod
+    def _update_timeout_streak(player, timeout_happened):
+        threshold = player.session.config.get('dropout_timeout_pages', 3)
+        if threshold is None or threshold <= 0:
+            if not timeout_happened:
+                player.participant.vars['consecutive_timeouts'] = 0
+            player.participant.vars['auto_play'] = False
+            player.participant.vars['dropout_warning_active'] = False
+            return
+        if timeout_happened:
+            streak = player.participant.vars.get('consecutive_timeouts', 0) + 1
+            player.participant.vars['consecutive_timeouts'] = streak
+            if streak >= threshold:
+                player.participant.vars['auto_play'] = True
+                player.participant.vars['dropout_warning_active'] = True
+        else:
+            player.participant.vars['consecutive_timeouts'] = 0
+            player.participant.vars['auto_play'] = False
+            player.participant.vars['dropout_warning_active'] = False
 
     @staticmethod
     def vars_for_template(player):
@@ -172,6 +206,8 @@ class Contribution(Page):
             C=Constants,
             history_rounds=build_history_rounds(player),
             available_endowment=player.available_endowment,
+            show_power_info=True,
+            timeout_seconds=Contribution.get_timeout_seconds(player),
         )
 
     @staticmethod
@@ -191,16 +227,18 @@ class Contribution(Page):
 
     @staticmethod
     def before_next_page(player, timeout_happened):
+        Contribution._update_timeout_streak(player, timeout_happened)
         endowment = player.session.config.get('endowment', Constants.endowment)
         available = player.available_endowment if player.available_endowment is not None else c(endowment)
+        if timeout_happened:
+            auto_contribution = int(float(available))
+            if auto_contribution < 0:
+                auto_contribution = 0
+            player.contribution = auto_contribution
         player.available_before_contribution = available
         remaining = available - player.contribution
-        if remaining < c(0):
-            remaining = c(0)
         player.available_endowment = remaining
         player.available_before_punishment = remaining
-        if remaining <= c(0):
-            player.can_receive_punishment = False
         player.participant.vars['contribution_submitted_round'] = player.round_number
 
 # =============================================================================
@@ -231,7 +269,15 @@ class ContributionWaitPage(WaitPage):
 # =============================================================================
 # CLASS: ContributionResult
 # =============================================================================
-class ContributionResult(Page):
+class ContributionResult(BasePage):
+    @staticmethod
+    def get_timeout_seconds(player):
+        return player.session.config.get('non_decision_timeout_seconds', 10)
+
+    @staticmethod
+    def before_next_page(player, timeout_happened):
+        Contribution._update_timeout_streak(player, timeout_happened)
+
     @staticmethod
     def vars_for_template(player):
         session = player.session
@@ -266,8 +312,12 @@ class ContributionResult(Page):
         )
 
 
-class PowerTransfer(Page):
+class PowerTransfer(BasePage):
     form_model = "player"
+
+    @staticmethod
+    def get_timeout_seconds(player):
+        return player.session.config.get('decision_timeout_seconds', 60)
 
     @staticmethod
     def is_displayed(player):
@@ -314,6 +364,8 @@ class PowerTransfer(Page):
             cost_per_unit_display=f"{cost_per_unit:.1f}",
             currency_label=session.config.get('real_world_currency_code', 'MU'),
             players_status=[],
+            timeout_seconds=PowerTransfer.get_timeout_seconds(player),
+            power_max=Constants.players_per_group,
         )
 
     @staticmethod
@@ -337,12 +389,16 @@ class PowerTransfer(Page):
 
     @staticmethod
     def before_next_page(player, timeout_happened):
+        Contribution._update_timeout_streak(player, timeout_happened)
         session = player.session
         transfer_fields = [
             f"power_transfer_p{i}"
             for i in range(1, Constants.players_per_group + 1)
             if i != player.id_in_group
         ]
+        if timeout_happened:
+            for field in transfer_fields:
+                setattr(player, field, 0)
         total_out = 0
         for field in transfer_fields:
             total_out += getattr(player, field, 0) or 0
@@ -409,11 +465,6 @@ class PowerTransferWait(WaitPage):
             remaining = max(0, endowment - cost_value)
             player.available_endowment = c(remaining)
 
-            if player.session.config.get('costly_punishment_transfer') and cost_value > 0:
-                player.can_receive_punishment = False
-            else:
-                player.can_receive_punishment = True
-
     @staticmethod
     def vars_for_template(player):
         players = player.group.get_players()
@@ -427,7 +478,15 @@ class PowerTransferWait(WaitPage):
         return dict(waiting_progress=submitted, waiting_total=total)
 
 
-class PowerTransferResult(Page):
+class PowerTransferResult(BasePage):
+    @staticmethod
+    def get_timeout_seconds(player):
+        return player.session.config.get('non_decision_timeout_seconds', 10)
+
+    @staticmethod
+    def before_next_page(player, timeout_happened):
+        Contribution._update_timeout_streak(player, timeout_happened)
+
     @staticmethod
     def is_displayed(player):
         session = player.session
@@ -447,12 +506,14 @@ class PowerTransferResult(Page):
                 transfer_cost_display = "0.0"
             else:
                 transfer_cost_display = f"{float(transfer_cost_value):.1f}"
+            final_power_value = float(member.punishment_power_after or 0)
             columns.append(
                 dict(
                     id_in_group=member.id_in_group,
                     is_self=member.id_in_group == player.id_in_group,
                     header=f"プレイヤー {member.id_in_group}",
-                    final_power_display=f"{member.punishment_power_after:.1f} / 1.0",
+                    final_power_display=f"{member.punishment_power_after:.1f}",
+                    final_power_value=final_power_value,
                     net_transfer_display=f"- {member.power_transfer_out_total:.1f} / + {member.power_transfer_in_total:.1f}",
                     transfer_cost_display=transfer_cost_display,
                     current_balance_display="-",
@@ -497,6 +558,7 @@ class PowerTransferResult(Page):
             transfer_headers=headers,
             round_number=player.round_number,
             is_costly=session.config.get("costly_punishment_transfer", False),
+            power_max=Constants.players_per_group,
         )
 
 
@@ -504,8 +566,12 @@ class PowerTransferResult(Page):
 # =============================================================================
 # CLASS: Punishment
 # =============================================================================
-class Punishment(Page):
+class Punishment(BasePage):
     form_model = 'player'
+
+    @staticmethod
+    def get_timeout_seconds(player):
+        return player.session.config.get('decision_timeout_seconds', 60)
 
     @staticmethod
     def get_form_fields(player):
@@ -514,9 +580,7 @@ class Punishment(Page):
         for i in range(1, Constants.players_per_group + 1):
             if i == player.id_in_group:
                 continue
-            target = group.get_player_by_id(i)
-            if target.can_receive_punishment:
-                fields.append(f'punish_p{i}')
+            fields.append(f'punish_p{i}')
         return fields
 
     @staticmethod
@@ -526,18 +590,50 @@ class Punishment(Page):
     @staticmethod
     def vars_for_template(player):
         id_range = list(range(1, Constants.players_per_group + 1))
-        endowment = player.session.config['endowment']
+        session = player.session
+        endowment = session.config['endowment']
         contribution = player.contribution if hasattr(player, 'contribution') else 0
 
         remaining_mu = endowment - contribution
 
+        players = sorted(player.group.get_players(), key=lambda p: p.id_in_group)
+        players_data = []
+        self_power_value = 1.0
+        for member in players:
+            power_value = member.punishment_power_after
+            if power_value is None:
+                power_value = member.punishment_power_before or member.participant.vars.get('punishment_power', 1.0)
+            if member.id_in_group == player.id_in_group:
+                self_power_value = float(power_value)
+            players_data.append(
+                dict(
+                    player=member,
+                    id_in_group=member.id_in_group,
+                    is_self=member.id_in_group == player.id_in_group,
+                    contribution=member.contribution,
+                    power_value=float(power_value),
+                    power_display=f"{float(power_value):.1f}",
+                )
+            )
+
+        deduction_points = session.config['deduction_points']
+        punishment_cost = session.config.get('punishment_cost', 1)
+        max_punishment_cost = float(deduction_points) * float(punishment_cost)
+
         return dict(
-            players_contribution=player.group.get_players(),
-            deduction_points=player.session.config['deduction_points'],
+            players_data=players_data,
+            deduction_points=deduction_points,
+            endowment=endowment,
             id_range=id_range,
             history_rounds=build_history_rounds(player),
-            can_receive_map={p.id_in_group: p.can_receive_punishment for p in player.group.get_players()},
-            remaining_mu = remaining_mu
+            remaining_mu=remaining_mu,
+            show_power_info=False,
+            timeout_seconds=Punishment.get_timeout_seconds(player),
+            punishment_cost=punishment_cost,
+            max_punishment_cost=max_punishment_cost,
+            max_punishment_cost_display=f"{max_punishment_cost:.1f}",
+            power_effectiveness=session.config.get('power_effectiveness', Constants.power_effectiveness),
+            self_power_value=self_power_value,
         )
 
     @staticmethod
@@ -562,11 +658,14 @@ class Punishment(Page):
 
     @staticmethod
     def before_next_page(player, timeout_happened):
+        Contribution._update_timeout_streak(player, timeout_happened)
         punishment_cost = player.session.config.get('punishment_cost', 1)
         total_punishment = 0
         for i in range(1, Constants.players_per_group + 1):
             field_name = f'punish_p{i}'
             if hasattr(player, field_name):
+                if timeout_happened:
+                    setattr(player, field_name, 0)
                 value = getattr(player, field_name, 0) or 0
                 total_punishment += value
         total_cost = c(total_punishment * punishment_cost)
@@ -604,7 +703,11 @@ class PunishmentWaitPage(WaitPage):
 # =============================================================================
 # CLASS: RoundResult
 # =============================================================================
-class RoundResult(Page):
+class RoundResult(BasePage):
+    @staticmethod
+    def get_timeout_seconds(player):
+        return player.session.config.get('non_decision_timeout_seconds', 10)
+
     @staticmethod
     def is_displayed(player):
         return player.round_number > 1
@@ -670,7 +773,6 @@ class RoundResult(Page):
                 if diff > actual_loss:
                     actual_loss = max(0.0, diff)
 
-            attempted_loss = 0.0
             attempted_points = {}
             effective_power_map = {}
             for giver in players:
@@ -683,14 +785,6 @@ class RoundResult(Page):
                     or giver.participant.vars.get('punishment_power', 1.0)
                 )
                 effective_power_map[giver.id_in_group] = effective_power
-                if points > 0:
-                    attempted_loss += points * effectiveness_base * effective_power
-
-            if attempted_loss <= 0:
-                scale = 0.0
-            else:
-                scale = min(1.0, actual_loss / attempted_loss)
-
             cells = []
             total_received = 0.0
             for giver in players:
@@ -699,7 +793,7 @@ class RoundResult(Page):
                     cells.append(dict(is_self=True, amount=None, amount_display=None))
                 else:
                     points_attempted = attempted_points.get(giver.id_in_group, 0)
-                    points_used = round(points_attempted * scale, 6)
+                    points_used = points_attempted
                     effective_power = effective_power_map.get(
                         giver.id_in_group,
                         giver.punishment_power_after
@@ -740,6 +834,7 @@ class RoundResult(Page):
 
     @staticmethod
     def before_next_page(player, timeout_happened):
+        Contribution._update_timeout_streak(player, timeout_happened)
         stop_round = player.session.config.get('browser_bot_stop_round')
         if (
             stop_round
@@ -748,13 +843,53 @@ class RoundResult(Page):
         ):
             player.participant.is_browser_bot = False
 
+        session = player.session
+        if session.vars.get('early_stop_round'):
+            return
+
+        min_rounds = session.config.get('early_stop_min_rounds', 14)
+        dropout_threshold = session.config.get('early_stop_dropout_count', 2)
+        if dropout_threshold is None or dropout_threshold <= 0:
+            return
+        if player.round_number >= min_rounds:
+            group_players = player.group.get_players()
+            dropout_count = sum(
+                1
+                for p in group_players
+                if p.participant.vars.get('auto_play')
+            )
+            if dropout_count >= dropout_threshold:
+                session.vars['early_stop_round'] = player.round_number
+                for p in group_players:
+                    p.participant.vars['early_stop'] = True
+                    p.participant.vars['early_stop_round'] = player.round_number
+
 # =============================================================================
 # CLASS: FinalResult (ゲームアプリ内の最終ページ)
 # =============================================================================
-class FinalResult(Page):
+class FinalResult(BasePage):
+    @staticmethod
+    def get_timeout_seconds(player):
+        return player.session.config.get('non_decision_timeout_seconds', 10)
+
+    @staticmethod
+    def before_next_page(player, timeout_happened):
+        Contribution._update_timeout_streak(player, timeout_happened)
+
     @staticmethod
     def is_displayed(player):
+        early_stop_round = player.participant.vars.get('early_stop_round')
+        if early_stop_round:
+            return player.round_number == early_stop_round
         return player.round_number == Constants.num_rounds
+
+    @staticmethod
+    def app_after_this_page(player, upcoming_apps):
+        early_stop_round = player.participant.vars.get('early_stop_round')
+        if early_stop_round and player.round_number < Constants.num_rounds:
+            if upcoming_apps:
+                return upcoming_apps[0]
+        return None
 
     @staticmethod
     def vars_for_template(player):

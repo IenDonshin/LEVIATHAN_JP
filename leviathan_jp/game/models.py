@@ -48,7 +48,6 @@ class Subsession(BaseSubsession):
             p.power_transfer_in_total = 0
             p.power_transfer_cost = c(0)
             p.available_endowment = c(self.session.config.get('endowment', Constants.endowment))
-            p.can_receive_punishment = True
             p.available_before_contribution = p.available_endowment
             p.available_before_punishment = p.available_endowment
             p.attempted_punishment_cost = c(0)
@@ -90,9 +89,7 @@ class Group(BaseGroup):
         actual_points_sent = {p: 0.0 for p in players}
 
         for victim in players:
-            victim_available = float(victim.available_before_punishment or victim.available_endowment or 0)
             punish_entries = []
-            total_loss = 0.0
             for punisher in players:
                 if punisher.id_in_group == victim.id_in_group:
                     continue
@@ -101,21 +98,12 @@ class Group(BaseGroup):
                     continue
                 effective_power = punisher.punishment_power_after or punisher.participant.vars.get('punishment_power', 1.0)
                 loss_per_point = effectiveness_base * effective_power
-                total_loss += attempted_points * loss_per_point
                 punish_entries.append((punisher, attempted_points, loss_per_point))
-
-            if total_loss <= victim_available + 1e-9:
-                scale = 1.0
-            else:
-                if total_loss <= 0 or victim_available <= 0:
-                    scale = 0.0
-                else:
-                    scale = victim_available / total_loss
 
             actual_loss = 0.0
             received_points = 0.0
             for punisher, attempted_points, loss_per_point in punish_entries:
-                points_used = round(attempted_points * scale, 6)
+                points_used = attempted_points
                 loss = points_used * loss_per_point
                 actual_loss += loss
                 received_points += points_used
@@ -123,24 +111,21 @@ class Group(BaseGroup):
                 actual_points_sent[punisher] += points_used
                 actual_cost[punisher] += points_used * cost_per_point
 
-            victim_available = max(0.0, victim_available - actual_loss)
+            available_before = float(victim.available_before_punishment or victim.available_endowment or 0)
+            victim_available = available_before - actual_loss
             victim.available_endowment = c(victim_available)
             victim.punishment_points_received_actual = received_points
             victim.punishment_received = c(actual_loss)
-            if victim_available <= 0:
-                victim.can_receive_punishment = False
 
         for punisher in players:
             attempted_cost = float(punisher.attempted_punishment_cost or 0)
             actual_cost_value = min(actual_cost[punisher], attempted_cost)
 
             available_before = float(punisher.available_before_punishment or punisher.available_endowment or 0)
-            new_available = max(0.0, available_before - actual_cost_value)
+            new_available = available_before - actual_cost_value
             punisher.available_endowment = c(new_available)
             punisher.punishment_given = c(actual_cost_value)
             punisher.punishment_points_given_actual = actual_points_sent[punisher]
-            if new_available <= 0:
-                punisher.can_receive_punishment = False
 
 
 class Player(BasePlayer):
@@ -179,7 +164,6 @@ class Player(BasePlayer):
     punishment_power_after = models.FloatField(initial=1.0, blank=True)
     power_transfer_cost = models.CurrencyField(initial=c(0), blank=True)
     available_endowment = models.CurrencyField(initial=Constants.endowment, blank=True)
-    can_receive_punishment = models.BooleanField(initial=True)
     available_before_contribution = models.CurrencyField(initial=Constants.endowment, blank=True)
     available_before_punishment = models.CurrencyField(initial=Constants.endowment, blank=True)
     attempted_punishment_cost = models.CurrencyField(initial=c(0), blank=True)
@@ -209,13 +193,12 @@ class Player(BasePlayer):
             punishment_points_received = 0
             punishment_loss = 0
             effectiveness_base = self.session.config.get('power_effectiveness', Constants.power_effectiveness)
-            if self.can_receive_punishment:
-                for other_player in self.get_others_in_group():
-                    field_name = f'punish_p{self.id_in_group}'
-                    points = getattr(other_player, field_name, 0) or 0
-                    punishment_points_received += points
-                    effective_power = other_player.punishment_power_after or other_player.participant.vars.get('punishment_power', 1.0)
-                    punishment_loss += points * effectiveness_base * effective_power
+            for other_player in self.get_others_in_group():
+                field_name = f'punish_p{self.id_in_group}'
+                points = getattr(other_player, field_name, 0) or 0
+                punishment_points_received += points
+                effective_power = other_player.punishment_power_after or other_player.participant.vars.get('punishment_power', 1.0)
+                punishment_loss += points * effectiveness_base * effective_power
             self.punishment_points_received_actual = punishment_points_received
             self.punishment_received = c(punishment_loss)
 

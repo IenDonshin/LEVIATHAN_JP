@@ -31,6 +31,11 @@ SESSION_CONFIG_DEFAULTS = dict(
     doc="公共財ゲーム。Roomsで条件を振り分け。",
     mturk_hit_settings=dict(),
     num_demo_participants=5,
+    decision_timeout_seconds=60,
+    dropout_timeout_pages=3,
+    early_stop_min_rounds=14,
+    early_stop_dropout_count=1,
+    non_decision_timeout_seconds=60,
 )
 
 SESSION_CONFIGS = [
