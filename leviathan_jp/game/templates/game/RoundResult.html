@@ -7,85 +7,443 @@
 
 {% block content %}
 
-<div class="stage-layout">
+<div class="stage-layout punishment-stage-layout round-result-layout{% if round_result_allow_vertical_scroll %} round-result-layout--scrollable{% endif %}">
     <div class="stage-header">
         <div>
-            <div class="stage-title">ラウンド概要</div>
+            <div class="stage-title">ラウンド結果</div>
             <div class="stage-subtitle">第 {{ player.round_number }} ラウンド</div>
         </div>
-        <div class="stage-desc">
-            このラウンドの貢献・罰ポイント・損失の概要です。<br>
-            あなたの累積利得は {{ cumulative_payoff }} です。
+        <div class="stage-desc round-result-desc">
+            <span class="desc-line">各プレイヤーの貢献MUs・DPコスト・罰の割当結果を確認してください。</span>
+            <span class="desc-line">あなたの累積利得は {{ cumulative_payoff }} です。</span>
         </div>
     </div>
 
     <div class="stage-center">
-        <div class="stage-stack" style="width: 100%; gap: 2rem;">
-            <div class="action-row">
-                <div class="summary-chip">貢献段階利得: {{ payoff_from_contribution }}</div>
-                <div class="summary-chip">与えた罰コスト: {{ player.punishment_given }}</div>
-                <div class="summary-chip">受けた罰損失: {{ player.punishment_received }}</div>
-                {% if show_power_transfer and player.session.config.costly_punishment_transfer %}
-                <div class="summary-chip">移譲コスト: {{ player.power_transfer_cost }}</div>
-                {% endif %}
-                <div class="summary-chip">このラウンド利得: {{ player.payoff }}</div>
+        <div class="stage-stack" style="width: 100%;">
+            <div class="action-row round-result-action-row">
+                <button type="button"
+                        class="btn ui-button-ghost round-result-hidden-control"
+                        aria-hidden="true"
+                        tabindex="-1">
+                    全履歴をチェック
+                </button>
             </div>
 
-            <div class="player-grid" style="gap: 2.2rem;">
-                {% for summary in players_summary %}
-                <div class="player-card player-card--wide" style="--idx: {{ forloop.counter0 }};">
-                    <div class="player-label">
-                        {% if summary.id_in_group == player.id_in_group %}
-                            <strong>あなた（プレイヤー {{ summary.id_in_group }}）</strong>
-                        {% else %}
-                            プレイヤー {{ summary.id_in_group }}
-                        {% endif %}
-                    </div>
-                    <div class="bar-track" data-value="{{ summary.contribution }}" data-max="{{ summary.available_before_contribution }}">
-                        <div class="bar-fill"></div>
-                        <span class="bar-text">貢献 {{ summary.contribution }} / {{ summary.available_before_contribution }}</span>
-                    </div>
-                    <div class="bar-track bar-track--warn" style="margin-top: 0.6rem;" data-value="{{ summary.punishment_sent_total }}" data-max="{{ deduction_points }}">
-                        <div class="bar-fill"></div>
-                        <span class="bar-text">罰ポイント {{ summary.punishment_sent_total }} / {{ deduction_points }}</span>
-                    </div>
-                    <div class="matrix-note" style="margin-top: 0.6rem;">受けた罰: {{ summary.punishment_received_total }}</div>
-                    {% if show_power_transfer %}
-                    <div class="matrix-note">罰威力: {{ summary.power_after_display }} / 1.0</div>
-                    {% endif %}
+            <div class="punishment-matrix-container{% if round_result_allow_vertical_scroll %} punishment-matrix-container--scrollable{% endif %}">
+                <div class="punishment-matrix-wrap">
+                    <table class="matrix-table matrix-table--inputs punishment-table round-result-punish-table">
+                        <colgroup>
+                            <col style="width: var(--punish-label-width);">
+                            {% for header in matrix_headers %}
+                                <col style="width: var(--punish-bar-width);">
+                            {% endfor %}
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th></th>
+                                {% for header in matrix_headers %}
+                                    <th>
+                                        {% if header.is_self %}
+                                            あなた
+                                        {% else %}
+                                            プレイヤー {{ header.id_in_group }}
+                                        {% endif %}
+                                    </th>
+                                {% endfor %}
+                            </tr>
+                            <tr>
+                                <th class="matrix-note">貢献MUs</th>
+                                {% for summary in players_summary %}
+                                    <th>
+                                        <div class="bar-track bar-track--compact bar-track--blue"
+                                             data-value="{{ summary.contribution }}"
+                                             data-max="{{ summary.available_before_contribution }}">
+                                            <div class="bar-fill"></div>
+                                            <span class="bar-text">{{ summary.contribution_display }} / {{ summary.available_before_contribution_display }}</span>
+                                        </div>
+                                    </th>
+                                {% endfor %}
+                            </tr>
+                            <tr>
+                                <th class="matrix-note">DPコスト</th>
+                                {% for summary in players_summary %}
+                                    <th>
+                                        <div class="dp-cost-box dp-cost-box--fill">
+                                            <div class="dp-cost-fill" style="width: {{ summary.punishment_sent_fill_percent }}%;"></div>
+                                            <span class="dp-cost-text">{{ summary.punishment_sent_total_display }} / {{ max_total_dp_display }}</span>
+                                        </div>
+                                    </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for matrix_row in matrix_rows %}
+                            <tr>
+                                <td class="matrix-note">
+                                    <div class="player-row-label">
+                                        <span class="player-name">
+                                            {% if matrix_row.is_self %}
+                                                あなた
+                                            {% else %}
+                                                プレイヤー {{ matrix_row.giver_id }}
+                                            {% endif %}
+                                        </span>
+                                        <span class="power-tag">({{ matrix_row.power_display }})</span>
+                                    </div>
+                                </td>
+                                {% for cell in matrix_row.cells %}
+                                    {% if cell.is_self %}
+                                        <td class="is-self">--</td>
+                                    {% else %}
+                                        <td class="matrix-slider-cell matrix-slider-cell--static"
+                                            style="--punish-fill: {{ cell.fill_percent }}%;">
+                                            <span class="slider-value">{{ cell.points_display }}/{{ per_target_dp_limit }}</span>
+                                            <span class="slider-effect">({{ cell.effect_display }})</span>
+                                        </td>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <table class="matrix-table matrix-table--inputs punishment-table punishment-input-table round-result-input-placeholder">
+                        <colgroup>
+                            <col style="width: var(--punish-label-width);">
+                            {% for header in matrix_headers %}
+                                <col style="width: var(--punish-bar-width);">
+                            {% endfor %}
+                        </colgroup>
+                        <tbody>
+                            <tr>
+                                <td class="punishment-input-label"></td>
+                                {% for header in matrix_headers %}
+                                    {% if header.is_self %}
+                                        <td class="punishment-input-self"></td>
+                                    {% else %}
+                                        <td>
+                                            <input type="number"
+                                                   name="punish_p{{ header.id_in_group }}"
+                                                   min="0"
+                                                   max="{{ per_target_dp_limit }}"
+                                                   step="1"
+                                                   value=""
+                                                   placeholder="0"
+                                                   class="punishment-input decision-number js-slider-input"
+                                                   disabled
+                                                   tabindex="-1"
+                                                   aria-hidden="true">
+                                        </td>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                {% endfor %}
             </div>
-
-            <div style="width: 100%;">
-                <div class="stage-title" style="font-size: 0.95rem; margin-bottom: 0.6rem;">罰の交換マトリクス</div>
-                <table class="matrix-table">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            {% for giver_id in matrix_headers %}
-                                <th>{% if giver_id == player.id_in_group %}あなた{% else %}プレイヤー {{ giver_id }}{% endif %} から</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for matrix_row in matrix_rows %}
-                        <tr>
-                            <td class="matrix-note"><strong>{% if matrix_row.victim_id == player.id_in_group %}あなた{% else %}プレイヤー {{ matrix_row.victim_id }}{% endif %}</strong></td>
-                            {% for cell in matrix_row.cells %}
-                                <td class="{% if cell.is_self %}is-self{% endif %}">{% if cell.is_self %}-{% else %}{{ cell.amount }}{% endif %}</td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="action-row">
+                {% next_button %}
             </div>
         </div>
     </div>
-
-    <div class="stage-footer">
-        {% next_button %}
-    </div>
 </div>
+
+<style>
+    .round-result-punish-table {
+        --punish-bar-width: var(--ui-common-bar-width);
+        --punish-bar-height: var(--ui-common-bar-height);
+        --punish-label-width: 180px;
+        --punish-effect-width: 42px;
+        --punish-frame: 1px;
+    }
+
+    .round-result-punish-table {
+        --punish-gap: 2.6rem;
+        --punish-gap-y: clamp(0.9rem, 2.2vh, 1.6rem);
+        border-spacing: var(--punish-gap) var(--punish-gap-y);
+        table-layout: fixed;
+    }
+
+    .round-result-punish-table th {
+        font-size: 0.7rem;
+        letter-spacing: 0.02em;
+        padding: 0.3rem 0.3rem;
+        vertical-align: bottom;
+    }
+
+    .round-result-punish-table thead tr:nth-child(2) th:not(:first-child),
+    .round-result-punish-table thead tr:nth-child(3) th:not(:first-child) {
+        padding: 0 !important;
+    }
+
+    .round-result-punish-table thead tr:nth-child(3) th {
+        vertical-align: top !important;
+        padding-bottom: calc(var(--punish-gap-y) * 2) !important;
+    }
+
+    .round-result-punish-table .bar-track--compact {
+        width: 100%;
+        height: var(--punish-bar-height);
+        border-color: #7a7a7a;
+        background: #303030;
+        box-sizing: border-box;
+    }
+
+    .round-result-punish-table .bar-track--compact .bar-text {
+        font-size: 0.68rem;
+        color: #efefef;
+    }
+
+    .round-result-punish-table .dp-cost-box {
+        border: 1px solid #b06a35;
+        color: #b06a35;
+        font-size: 0.68rem;
+        padding: 0.26rem 0.35rem;
+        border-radius: 2px;
+        text-align: center;
+        background: rgba(40, 32, 24, 0.65);
+        width: 100%;
+        height: var(--punish-bar-height);
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .round-result-punish-table .dp-cost-fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 0%;
+        background: #b06a35;
+        opacity: 0.65;
+    }
+
+    .round-result-punish-table .dp-cost-text {
+        position: relative;
+        z-index: 1;
+        color: #f0e7dd;
+    }
+
+    .round-result-punish-table .player-row-label {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.72rem;
+    }
+
+    .round-result-punish-table .player-name {
+        min-width: 96px;
+        display: inline-block;
+    }
+
+    .round-result-punish-table .power-tag {
+        color: #3b74c6;
+    }
+
+    .round-result-punish-table td.matrix-slider-cell--static {
+        padding: 0 !important;
+        height: var(--punish-bar-height);
+        position: relative;
+        overflow: visible;
+        background: linear-gradient(
+            to right,
+            #c7972f 0%,
+            #c7972f var(--punish-fill, 0%),
+            #2f2f2f var(--punish-fill, 0%),
+            #2f2f2f 100%
+        );
+        border: var(--punish-frame) solid #c7972f;
+        background-clip: padding-box;
+        box-sizing: border-box;
+    }
+
+    .round-result-punish-table td.matrix-slider-cell--static .slider-value {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        color: #f2f2f2;
+        font-size: 0.7rem;
+        letter-spacing: 0.02em;
+        pointer-events: none;
+        z-index: 1;
+        text-shadow: 0 0 6px rgba(0, 0, 0, 0.45);
+    }
+
+    .round-result-punish-table td.matrix-slider-cell--static .slider-effect {
+        color: #c7972f;
+        font-size: 0.7rem;
+        position: absolute;
+        right: calc(-0.5 * var(--punish-gap));
+        top: 50%;
+        transform: translate(50%, -50%);
+        white-space: nowrap;
+        text-align: center;
+        pointer-events: none;
+    }
+
+    .round-result-punish-table td {
+        border-color: transparent;
+        background: #2f2f2f;
+        height: var(--punish-bar-height);
+        min-width: var(--punish-bar-width);
+    }
+
+    .round-result-punish-table td.matrix-note {
+        border-color: transparent;
+        background: transparent;
+    }
+
+    .round-result-punish-table th:first-child,
+    .round-result-punish-table td:first-child {
+        width: var(--punish-label-width);
+        min-width: var(--punish-label-width);
+    }
+
+    .round-result-punish-table th:not(:first-child),
+    .round-result-punish-table td:not(:first-child) {
+        width: var(--punish-bar-width);
+    }
+
+    .round-result-punish-table thead th {
+        vertical-align: middle;
+    }
+
+    .round-result-punish-table td.is-self {
+        border-color: transparent;
+        background: #343434;
+    }
+
+    .round-result-layout .punishment-matrix-container {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .round-result-layout .punishment-matrix-wrap {
+        display: inline-block;
+    }
+
+    .round-result-layout.punishment-stage-layout {
+        gap: 1.3rem;
+    }
+
+    .round-result-layout.punishment-stage-layout .stage-center {
+        align-items: flex-start;
+        padding-top: 0.2rem;
+    }
+
+    .round-result-layout.punishment-stage-layout .stage-stack {
+        gap: 0.75rem;
+    }
+
+    .round-result-layout.punishment-stage-layout .stage-footer,
+    .round-result-layout.punishment-stage-layout .action-row {
+        gap: 0.6rem;
+    }
+
+    .round-result-layout .round-result-action-row .round-result-hidden-control {
+        visibility: hidden;
+        pointer-events: none;
+        min-width: 152px;
+    }
+
+    .round-result-layout .round-result-input-placeholder {
+        margin-top: 0;
+        border-spacing: var(--punish-gap) 0.4rem;
+        visibility: hidden;
+        pointer-events: none;
+    }
+
+    .round-result-layout .round-result-input-placeholder td {
+        text-align: center;
+        border-color: transparent;
+        background: transparent !important;
+        height: var(--punish-bar-height);
+    }
+
+    .round-result-layout .round-result-input-placeholder td.punishment-input-label {
+        border: none;
+        background: transparent;
+    }
+
+    .round-result-layout .round-result-input-placeholder td.punishment-input-self {
+        border: none !important;
+        background: transparent !important;
+    }
+
+    .round-result-layout .round-result-input-placeholder td input.punishment-input.decision-number[type="number"] {
+        width: 33.3333% !important;
+        min-width: 44px;
+        max-width: 72px;
+        font-size: 0.85rem;
+        padding: 0.2rem 0.35rem;
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+    }
+
+    .round-result-layout--scrollable {
+        min-height: auto;
+    }
+
+    .round-result-layout--scrollable .stage-center {
+        align-items: flex-start;
+    }
+
+    .round-result-layout .punishment-matrix-container--scrollable {
+        justify-content: flex-start;
+        overflow-y: auto;
+        overflow-x: auto;
+        max-height: min(68vh, 760px);
+        padding-right: 0.2rem;
+    }
+
+    .round-result-layout .punishment-matrix-container--scrollable .punishment-matrix-wrap {
+        min-width: max-content;
+    }
+
+    .round-result-layout .round-result-desc {
+        max-width: 560px;
+    }
+
+    .round-result-layout .round-result-desc .desc-line {
+        display: block;
+        white-space: nowrap;
+    }
+
+    .round-result-layout {
+        width: 100%;
+    }
+
+    @media (max-height: 900px) {
+        .round-result-punish-table {
+            --punish-gap: 2.2rem;
+        }
+
+        .round-result-punish-table thead tr:nth-child(3) th {
+            padding-bottom: calc(var(--punish-gap-y) * 2) !important;
+        }
+
+        .round-result-layout.punishment-stage-layout {
+            gap: 0.9rem;
+        }
+
+        .round-result-layout.punishment-stage-layout .stage-stack {
+            gap: 0.45rem;
+        }
+    }
+
+    @media (max-width: 1100px) {
+        .round-result-layout .round-result-desc .desc-line {
+            white-space: normal;
+        }
+    }
+</style>
 
 {% endblock %}

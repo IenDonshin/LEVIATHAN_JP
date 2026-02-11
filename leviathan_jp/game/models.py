@@ -140,13 +140,13 @@ class Player(BasePlayer):
             return self.available_endowment
         return self.session.config['endowment']
 
-    # 各プレイヤーに与える罰ポイントを入力するフィールド
+    # 各プレイヤーに与えるDPを入力するフィールド
     # グループは最大5人を想定し、id_in_group は 1〜5
-    punish_p1 = models.IntegerField(min=0, initial=0, label="プレイヤー1への罰ポイント")
-    punish_p2 = models.IntegerField(min=0, initial=0, label="プレイヤー2への罰ポイント")
-    punish_p3 = models.IntegerField(min=0, initial=0, label="プレイヤー3への罰ポイント")
-    punish_p4 = models.IntegerField(min=0, initial=0, label="プレイヤー4への罰ポイント")
-    punish_p5 = models.IntegerField(min=0, initial=0, label="プレイヤー5への罰ポイント")
+    punish_p1 = models.IntegerField(min=0, initial=0, label="プレイヤー1へのDP")
+    punish_p2 = models.IntegerField(min=0, initial=0, label="プレイヤー2へのDP")
+    punish_p3 = models.IntegerField(min=0, initial=0, label="プレイヤー3へのDP")
+    punish_p4 = models.IntegerField(min=0, initial=0, label="プレイヤー4へのDP")
+    punish_p5 = models.IntegerField(min=0, initial=0, label="プレイヤー5へのDP")
 
     punishment_given = models.CurrencyField(doc="与えた罰の総コスト")
     punishment_received = models.CurrencyField(doc="受けた罰による総損失")

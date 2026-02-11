@@ -6,6 +6,14 @@ from .models import Constants
 from otree.api import Currency as c # Currency をインポートするための別名
 
 
+def _int_display(value):
+    """Format numeric-like values as integer strings for UI bars."""
+    try:
+        return str(int(round(float(value or 0))))
+    except (TypeError, ValueError):
+        return "0"
+
+
 def build_history_rounds(player):
     """Collect per-round history data for templates."""
     session = player.session
@@ -16,6 +24,12 @@ def build_history_rounds(player):
     for prev in player.in_previous_rounds():
         group = prev.group
         members = group.get_players()
+        per_target_dp_limit = session.config.get(
+            'per_target_dp_limit',
+            session.config.get('deduction_points', 0),
+        )
+        max_total_dp = float(per_target_dp_limit) * max(len(members) - 1, 0)
+        dp_cost_denom = max_total_dp if max_total_dp > 0 else 1.0
 
         player_entries = []
         has_power_transfer = (
@@ -34,14 +48,23 @@ def build_history_rounds(player):
             effective_sent_points = getattr(member, 'punishment_points_given_actual', None)
             if effective_sent_points is None:
                 effective_sent_points = total_sent
+            effective_sent_points_int = int(round(float(effective_sent_points or 0)))
+            dp_fill_percent = max(
+                0.0,
+                min(100.0, (float(effective_sent_points_int) / dp_cost_denom) * 100.0),
+            )
 
             player_entries.append(
                 dict(
                     id_in_group=member.id_in_group,
                     contribution=member.contribution,
+                    contribution_display=_int_display(member.contribution),
                     endowment=endowment_currency,
+                    endowment_display=_int_display(endowment),
                     available_endowment=member.available_endowment,
                     punishment_sent_total=effective_sent_points,
+                    punishment_sent_total_display=effective_sent_points_int,
+                    punishment_sent_fill_percent=f"{dp_fill_percent:.2f}",
                     punishment_received_total=member.punishment_received,
                     power_before=member.punishment_power_before,
                     power_after=member.punishment_power_after,
@@ -98,7 +121,7 @@ def build_history_rounds(player):
                         dict(
                             is_self=False,
                             amount=loss_display,
-                            amount_display=loss_display,
+                            amount_display=f"{actual_loss_value:.1f}",
                         )
                     )
 
@@ -113,6 +136,42 @@ def build_history_rounds(player):
                     break
 
             matrix_rows.append(dict(victim_id=victim.id_in_group, cells=cells))
+
+        result_matrix_rows = []
+        fill_denom = float(per_target_dp_limit) if float(per_target_dp_limit) > 0 else 1.0
+        for giver in members:
+            giver_power = float(
+                giver.punishment_power_after
+                or giver.participant.vars.get('punishment_power', 1.0)
+            )
+            row_cells = []
+            for victim in members:
+                if giver.id_in_group == victim.id_in_group:
+                    row_cells.append(dict(is_self=True))
+                    continue
+                points_raw = getattr(giver, f'punish_p{victim.id_in_group}', 0) or 0
+                points_value = int(round(float(points_raw)))
+                effect_value = points_value * float(effectiveness_base) * giver_power
+                fill_percent = max(
+                    0.0,
+                    min(100.0, (float(points_value) / fill_denom) * 100.0),
+                )
+                row_cells.append(
+                    dict(
+                        is_self=False,
+                        points_display=str(points_value),
+                        effect_display=f"{effect_value:.1f}",
+                        fill_percent=f"{fill_percent:.2f}",
+                    )
+                )
+            result_matrix_rows.append(
+                dict(
+                    giver_id=giver.id_in_group,
+                    is_self=giver.id_in_group == player.id_in_group,
+                    power_display=f"{giver_power:.1f}",
+                    cells=row_cells,
+                )
+            )
 
         transfer_rows = []
         if has_power_transfer:
@@ -138,9 +197,12 @@ def build_history_rounds(player):
                 round_number=prev.round_number,
                 players=player_entries,
                 matrix_rows=matrix_rows,
+                result_matrix_rows=result_matrix_rows,
                 transfer_rows=transfer_rows,
                 has_punishment=prev.round_number > 1,
                 has_power_transfer=has_power_transfer,
+                max_total_dp_display=f"{int(max_total_dp)}",
+                per_target_dp_limit=int(per_target_dp_limit),
             )
         )
 
@@ -174,10 +236,17 @@ class Contribution(BasePage):
 
     @staticmethod
     def get_timeout_seconds(player):
+        if not player.session.config.get('enable_timeout_autoplay', True):
+            return None
         return player.session.config.get('decision_timeout_seconds', 60)
 
     @staticmethod
     def _update_timeout_streak(player, timeout_happened):
+        if not player.session.config.get('enable_timeout_autoplay', True):
+            player.participant.vars['consecutive_timeouts'] = 0
+            player.participant.vars['auto_play'] = False
+            player.participant.vars['dropout_warning_active'] = False
+            return
         threshold = player.session.config.get('dropout_timeout_pages', 3)
         if threshold is None or threshold <= 0:
             if not timeout_happened:
@@ -200,14 +269,30 @@ class Contribution(BasePage):
     def vars_for_template(player):
         # _HistoryModal.html の player.in_all_rounds イテレータが正しい id_range を得られるようにする
         id_range = list(range(1, Constants.players_per_group + 1))
+        player_count = len(player.group.get_players())
+        history_allow_vertical_scroll = player_count > 5 and (player_count % 5 == 0)
+        available = (
+            player.available_endowment
+            if player.available_endowment is not None
+            else player.session.config.get('endowment', Constants.endowment)
+        )
+        initial_contribution = 0
+        if player.round_number > 1:
+            prev_contribution = player.in_round(player.round_number - 1).contribution
+            prev_value = float(prev_contribution or 0)
+            initial_contribution = int(max(0, prev_value))
         return dict(
             history=player.in_previous_rounds(),
             id_range=id_range,
             C=Constants,
             history_rounds=build_history_rounds(player),
             available_endowment=player.available_endowment,
+            available_endowment_display=_int_display(available),
+            contribution_limit_display=_int_display(available),
+            initial_contribution=initial_contribution,
             show_power_info=True,
             timeout_seconds=Contribution.get_timeout_seconds(player),
+            history_allow_vertical_scroll=history_allow_vertical_scroll,
         )
 
     @staticmethod
@@ -272,6 +357,8 @@ class ContributionWaitPage(WaitPage):
 class ContributionResult(BasePage):
     @staticmethod
     def get_timeout_seconds(player):
+        if not player.session.config.get('enable_timeout_autoplay', True):
+            return None
         return player.session.config.get('non_decision_timeout_seconds', 10)
 
     @staticmethod
@@ -282,33 +369,61 @@ class ContributionResult(BasePage):
     def vars_for_template(player):
         session = player.session
         endowment = session.config['endowment']
-        endowment_currency = c(endowment)
+        multiplier = float(session.config.get('contribution_multiplier', Constants.multiplier))
         share = player.group.individual_share
+        group_players = sorted(player.group.get_players(), key=lambda p: p.id_in_group)
+
+        def _compact_decimal(value):
+            value_f = float(value or 0)
+            if abs(value_f - round(value_f)) < 1e-9:
+                return str(int(round(value_f)))
+            return f"{value_f:.1f}"
 
         players_data = []
-        for member in player.group.get_players():
+        for member in group_players:
             contribution = member.contribution
-            received_from_public = share
             remaining = member.available_endowment or c(0)
             available_before = member.available_before_contribution or remaining + contribution
-            kept_amount = remaining
-            current_total = kept_amount + share
+            current_total = remaining + share
+            contribution_value = float(contribution or 0)
+            available_before_value = float(available_before or 0)
+            current_total_value = float(current_total or 0)
 
             players_data.append(
                 dict(
                     player=member,
                     contribution=contribution,
-                    received_from_public=received_from_public,
+                    contribution_value=contribution_value,
+                    contribution_display=_int_display(contribution_value),
                     current_total=current_total,
+                    current_total_display=f"{current_total_value:.1f}",
                     available_endowment=remaining,
                     available_before_contribution=available_before,
+                    available_before_display=_int_display(available_before_value),
                 )
             )
 
+        group_size = len(group_players) or 1
+        total_contribution_value = float(player.group.total_contribution or 0)
+        project_outcome_value = total_contribution_value * multiplier
+        project_outcome_max_value = float(endowment) * group_size * multiplier
+        if project_outcome_max_value > 0:
+            project_outcome_fill_percent = max(
+                0.0,
+                min(100.0, (project_outcome_value / project_outcome_max_value) * 100.0),
+            )
+        else:
+            project_outcome_fill_percent = 0.0
+
         return dict(
             players_data=players_data,
-            endowment=endowment_currency,
+            endowment=endowment,
             share=share,
+            project_outcome_value=project_outcome_value,
+            project_outcome_max_value=project_outcome_max_value,
+            project_outcome_fill_percent=f"{project_outcome_fill_percent:.2f}",
+            project_outcome_value_display=_compact_decimal(project_outcome_value),
+            project_outcome_max_display=_compact_decimal(project_outcome_max_value),
         )
 
 
@@ -317,6 +432,8 @@ class PowerTransfer(BasePage):
 
     @staticmethod
     def get_timeout_seconds(player):
+        if not player.session.config.get('enable_timeout_autoplay', True):
+            return None
         return player.session.config.get('decision_timeout_seconds', 60)
 
     @staticmethod
@@ -348,6 +465,25 @@ class PowerTransfer(BasePage):
                 )
             )
 
+        # Precompute power values for template (otree templates lack round filter)
+        members_data = []
+        for member in player.group.get_players():
+            power_value = member.punishment_power_before
+            if power_value is None:
+                power_value = member.participant.vars.get('punishment_power', 1.0)
+            try:
+                power_value = float(power_value)
+            except (TypeError, ValueError):
+                power_value = 0.0
+            members_data.append(
+                dict(
+                    id_in_group=member.id_in_group,
+                    is_self=member.id_in_group == player.id_in_group,
+                    power_before_value=power_value,
+                    power_before_display=f"{power_value:.1f}",
+                )
+            )
+
         is_costly = session.config.get("costly_punishment_transfer", False)
 
         return dict(
@@ -356,6 +492,7 @@ class PowerTransfer(BasePage):
             transfer_unit=transfer_unit,
             transfer_unit_display=f"{transfer_unit:.1f}",
             others_data=others_data,
+            members_data=members_data,
             max_transfer=player.punishment_power_before,
             is_costly=is_costly,
             transfer_cost_rate=cost_per_unit,
@@ -401,7 +538,11 @@ class PowerTransfer(BasePage):
                 setattr(player, field, 0)
         total_out = 0
         for field in transfer_fields:
-            total_out += getattr(player, field, 0) or 0
+            value = player.field_maybe_none(field)
+            if value is None:
+                value = 0
+                setattr(player, field, value)
+            total_out += value
         player.power_transfer_out_total = round(total_out, 3)
 
         unit = session.config.get("punishment_transfer_unit", 0.1)
@@ -481,6 +622,8 @@ class PowerTransferWait(WaitPage):
 class PowerTransferResult(BasePage):
     @staticmethod
     def get_timeout_seconds(player):
+        if not player.session.config.get('enable_timeout_autoplay', True):
+            return None
         return player.session.config.get('non_decision_timeout_seconds', 10)
 
     @staticmethod
@@ -512,6 +655,7 @@ class PowerTransferResult(BasePage):
                     id_in_group=member.id_in_group,
                     is_self=member.id_in_group == player.id_in_group,
                     header=f"プレイヤー {member.id_in_group}",
+                    base_power_value=float(member.punishment_power_before or 0),
                     final_power_display=f"{member.punishment_power_after:.1f}",
                     final_power_value=final_power_value,
                     net_transfer_display=f"- {member.power_transfer_out_total:.1f} / + {member.power_transfer_in_total:.1f}",
@@ -571,6 +715,8 @@ class Punishment(BasePage):
 
     @staticmethod
     def get_timeout_seconds(player):
+        if not player.session.config.get('enable_timeout_autoplay', True):
+            return None
         return player.session.config.get('decision_timeout_seconds', 60)
 
     @staticmethod
@@ -594,9 +740,16 @@ class Punishment(BasePage):
         endowment = session.config['endowment']
         contribution = player.contribution if hasattr(player, 'contribution') else 0
 
-        remaining_mu = endowment - contribution
+        if player.available_before_punishment is not None:
+            remaining_mu = player.available_before_punishment
+        elif player.available_endowment is not None:
+            remaining_mu = player.available_endowment
+        else:
+            remaining_mu = endowment - contribution
+        remaining_mu_value = float(remaining_mu) if remaining_mu is not None else 0.0
 
         players = sorted(player.group.get_players(), key=lambda p: p.id_in_group)
+        history_allow_vertical_scroll = len(players) > 5 and (len(players) % 5 == 0)
         players_data = []
         self_power_value = 1.0
         for member in players:
@@ -611,47 +764,67 @@ class Punishment(BasePage):
                     id_in_group=member.id_in_group,
                     is_self=member.id_in_group == player.id_in_group,
                     contribution=member.contribution,
+                    contribution_display=_int_display(member.contribution),
                     power_value=float(power_value),
                     power_display=f"{float(power_value):.1f}",
                 )
             )
 
-        deduction_points = session.config['deduction_points']
+        endowment_display = _int_display(endowment)
+        deduction_points = session.config.get('per_target_dp_limit', session.config['deduction_points'])
         punishment_cost = session.config.get('punishment_cost', 1)
-        max_punishment_cost = float(deduction_points) * float(punishment_cost)
+        max_total_dp = float(deduction_points) * max(len(players) - 1, 0)
+        max_punishment_cost = max_total_dp * float(punishment_cost)
+        max_total_dp_display = f"{int(max_total_dp)}"
 
         return dict(
             players_data=players_data,
             deduction_points=deduction_points,
+            per_target_dp_limit=deduction_points,
             endowment=endowment,
+            endowment_display=endowment_display,
             id_range=id_range,
             history_rounds=build_history_rounds(player),
             remaining_mu=remaining_mu,
+            remaining_mu_value=remaining_mu_value,
             show_power_info=False,
             timeout_seconds=Punishment.get_timeout_seconds(player),
             punishment_cost=punishment_cost,
+            max_total_dp=max_total_dp,
+            max_total_dp_display=max_total_dp_display,
             max_punishment_cost=max_punishment_cost,
             max_punishment_cost_display=f"{max_punishment_cost:.1f}",
             power_effectiveness=session.config.get('power_effectiveness', Constants.power_effectiveness),
             self_power_value=self_power_value,
+            history_allow_vertical_scroll=history_allow_vertical_scroll,
         )
 
     @staticmethod
     def error_message(player, values):
         total_punishment = 0
+        per_target_limit = player.session.config.get('per_target_dp_limit', player.session.config['deduction_points'])
+        endowment = player.session.config.get('endowment', Constants.endowment)
+        contribution = player.contribution or 0
         for i in range(1, Constants.players_per_group + 1):
             field_name = f'punish_p{i}'
             if field_name in values and values[field_name] is not None:
-                total_punishment += values[field_name]
-
-        if total_punishment > player.session.config['deduction_points']:
-            return f"送られた点数 {player.session.config['deduction_points']}　を越えてはいけません。"
+                value = values[field_name]
+                if value < 0:
+                    return "DPは0以上の整数で入力してください。"
+                if int(value) != value:
+                    return "DPは整数で入力してください。"
+                if value > per_target_limit:
+                    return f"各プレイヤーへのDPは {per_target_limit} 以内で入力してください。"
+                total_punishment += value
         punishment_cost = player.session.config.get('punishment_cost', 1)
         total_cost = total_punishment * punishment_cost
-        available = float(player.available_endowment or 0)
-        if total_cost > available + 1e-6:
+        available = float(player.available_before_punishment or player.available_endowment or 0)
+        computed_available = float(endowment - contribution)
+        if computed_available > available + 1e-6:
+            available = computed_available
+        if total_cost > available + 1e-4:
             if punishment_cost > 0:
-                max_points = int(available // punishment_cost)
+                max_points = int((available + 1e-6) // punishment_cost)
             else:
                 max_points = total_punishment
             return f"現在、使えるMUsは {max_points} です。もう一度試して下さい。"
@@ -706,6 +879,8 @@ class PunishmentWaitPage(WaitPage):
 class RoundResult(BasePage):
     @staticmethod
     def get_timeout_seconds(player):
+        if not player.session.config.get('enable_timeout_autoplay', True):
+            return None
         return player.session.config.get('non_decision_timeout_seconds', 10)
 
     @staticmethod
@@ -722,7 +897,7 @@ class RoundResult(BasePage):
         )
 
         endowment = session.config['endowment']
-        deduction_points = session.config['deduction_points']
+        per_target_dp_limit = session.config.get('per_target_dp_limit', session.config['deduction_points'])
         endowment_currency = c(endowment)
         share = player.group.individual_share
 
@@ -730,25 +905,43 @@ class RoundResult(BasePage):
         payoff_from_contribution = endowment_currency - player.contribution + share
 
         players = sorted(player.group.get_players(), key=lambda p: p.id_in_group)
+        effectiveness_base = session.config.get('power_effectiveness', Constants.power_effectiveness)
+        max_total_dp = float(per_target_dp_limit) * max(len(players) - 1, 0)
+        max_total_dp_display = f"{int(max_total_dp)}"
+        dp_cost_denom = max_total_dp if max_total_dp > 0 else 1.0
 
         players_map = {}
         for member in players:
+            available_before_contribution = (
+                member.available_before_contribution
+                or (member.available_endowment or c(0)) + (member.contribution or c(0))
+            )
+            power_after_value = float(
+                member.punishment_power_after
+                or member.participant.vars.get('punishment_power', 1.0)
+            )
             players_map[member.id_in_group] = dict(
                 id_in_group=member.id_in_group,
                 contribution=member.contribution,
+                contribution_display=_int_display(member.contribution),
                 endowment=endowment_currency,
                 punishment_sent_total=0,
+                punishment_sent_total_display="0",
                 punishment_received_total=0,
                 power_before=member.punishment_power_before,
-                power_after=member.punishment_power_after,
-                power_after_display=f"{member.punishment_power_after:.1f}",
+                power_after=power_after_value,
+                power_after_display=f"{power_after_value:.1f}",
+                power_after_value=power_after_value,
                 power_transfer_out=member.power_transfer_out_total,
                 power_transfer_in=member.power_transfer_in_total,
                 power_transfer_out_display=f"{member.power_transfer_out_total:.1f}",
                 power_transfer_in_display=f"{member.power_transfer_in_total:.1f}",
                 power_transfer_cost=member.power_transfer_cost,
                 available_endowment=member.available_endowment,
-                available_before_contribution=member.available_before_contribution or (member.available_endowment or c(0)) + member.contribution,
+                available_before_contribution=available_before_contribution,
+                available_before_contribution_display=_int_display(available_before_contribution),
+                punishment_effect_display="0.0",
+                punishment_sent_fill_percent="0.00",
             )
 
         for member in players:
@@ -761,75 +954,70 @@ class RoundResult(BasePage):
                     field_name = f'punish_p{other.id_in_group}'
                     total_sent += getattr(member, field_name, 0) or 0
             players_map[member.id_in_group]['punishment_sent_total'] = total_sent
+            players_map[member.id_in_group]['punishment_sent_total_display'] = str(int(round(float(total_sent))))
+            effect_total = float(total_sent) * float(effectiveness_base) * players_map[member.id_in_group]['power_after_value']
+            players_map[member.id_in_group]['punishment_effect_display'] = f"{effect_total:.1f}"
+            players_map[member.id_in_group]['punishment_sent_fill_percent'] = (
+                f"{max(0.0, min(100.0, (float(total_sent) / dp_cost_denom) * 100.0)):.2f}"
+            )
 
-        effectiveness_base = session.config.get('power_effectiveness', Constants.power_effectiveness)
         matrix_rows = []
-        for victim in players:
-            actual_loss = float(victim.punishment_received or 0)
-            if actual_loss <= 0:
-                victim_before = float(victim.available_before_punishment or victim.available_endowment or 0)
-                victim_after = float(victim.available_endowment or 0)
-                diff = victim_before - victim_after
-                if diff > actual_loss:
-                    actual_loss = max(0.0, diff)
-
-            attempted_points = {}
-            effective_power_map = {}
-            for giver in players:
-                if giver.id_in_group == victim.id_in_group:
-                    continue
-                points = getattr(giver, f'punish_p{victim.id_in_group}', 0) or 0
-                attempted_points[giver.id_in_group] = points
-                effective_power = (
-                    giver.punishment_power_after
-                    or giver.participant.vars.get('punishment_power', 1.0)
-                )
-                effective_power_map[giver.id_in_group] = effective_power
-            cells = []
-            total_received = 0.0
-            for giver in players:
+        max_per_target = float(per_target_dp_limit) if float(per_target_dp_limit) > 0 else 1.0
+        for giver in players:
+            giver_power = players_map[giver.id_in_group]['power_after_value']
+            row_cells = []
+            for victim in players:
                 is_self = giver.id_in_group == victim.id_in_group
                 if is_self:
-                    cells.append(dict(is_self=True, amount=None, amount_display=None))
-                else:
-                    points_attempted = attempted_points.get(giver.id_in_group, 0)
-                    points_used = points_attempted
-                    effective_power = effective_power_map.get(
-                        giver.id_in_group,
-                        giver.punishment_power_after
-                        or giver.participant.vars.get('punishment_power', 1.0),
-                    )
-                    actual_loss_value = points_used * effectiveness_base * effective_power
-                    total_received += actual_loss_value
-                    loss_display = c(actual_loss_value)
-                    cells.append(
-                        dict(
-                            is_self=False,
-                            amount=loss_display,
-                            amount_display=loss_display,
-                        )
-                    )
+                    row_cells.append(dict(is_self=True))
+                    continue
 
-            if victim.punishment_received is not None:
-                summary_loss = victim.punishment_received
-            else:
-                summary_loss = c(total_received)
+                points_raw = getattr(giver, f'punish_p{victim.id_in_group}', 0) or 0
+                points_value = int(round(float(points_raw)))
+                effect_value = float(points_value) * float(effectiveness_base) * float(giver_power)
+                fill_percent = max(0.0, min(100.0, (float(points_value) / max_per_target) * 100.0))
+                row_cells.append(
+                    dict(
+                        is_self=False,
+                        points=points_value,
+                        points_display=str(points_value),
+                        effect_display=f"{effect_value:.1f}",
+                        fill_percent=f"{fill_percent:.2f}",
+                    )
+                )
 
-            players_map[victim.id_in_group]['punishment_received_total'] = summary_loss
-            matrix_rows.append(dict(victim_id=victim.id_in_group, cells=cells))
+            matrix_rows.append(
+                dict(
+                    giver_id=giver.id_in_group,
+                    is_self=giver.id_in_group == player.id_in_group,
+                    power_display=players_map[giver.id_in_group]['power_after_display'],
+                    cells=row_cells,
+                )
+            )
 
         players_summary = [players_map[idx] for idx in sorted(players_map.keys())]
+        matrix_headers = [
+            dict(
+                id_in_group=member.id_in_group,
+                is_self=member.id_in_group == player.id_in_group,
+            )
+            for member in players
+        ]
+        round_result_allow_vertical_scroll = len(players) > 5 and (len(players) % 5 == 0)
 
         return dict(
             payoff_from_contribution=payoff_from_contribution,
             cumulative_payoff=cumulative_payoff,
             players_summary=players_summary,
             matrix_rows=matrix_rows,
-            matrix_headers=[member.id_in_group for member in players],
+            matrix_headers=matrix_headers,
             show_power_transfer=show_power_transfer,
             treatment_name=treatment_name,
-            deduction_points=deduction_points,
+            per_target_dp_limit=per_target_dp_limit,
+            max_total_dp=max_total_dp,
+            max_total_dp_display=max_total_dp_display,
             endowment=endowment_currency,
+            round_result_allow_vertical_scroll=round_result_allow_vertical_scroll,
         )
 
     @staticmethod
@@ -870,6 +1058,8 @@ class RoundResult(BasePage):
 class FinalResult(BasePage):
     @staticmethod
     def get_timeout_seconds(player):
+        if not player.session.config.get('enable_timeout_autoplay', True):
+            return None
         return player.session.config.get('non_decision_timeout_seconds', 10)
 
     @staticmethod

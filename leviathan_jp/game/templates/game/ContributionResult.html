@@ -2,30 +2,29 @@
 {% load otree static %}
 
 {% block title %}
-    貢献ステージ結果
+    貢献結果
 {% endblock %}
 
 {% block content %}
 
-<div class="stage-layout">
+<div class="stage-layout contribution-result-overview">
     <div class="stage-header">
         <div>
-            <div class="stage-title">貢献ステージ</div>
-            <div class="stage-subtitle">第 {{ player.round_number }} ラウンドの結果</div>
+            <div class="stage-title">貢献結果</div>
+            <div class="stage-subtitle">第 {{ player.round_number }} ラウンド</div>
         </div>
-        <div class="stage-desc">
-            全員が決定しました。<br>
-            各プレイヤーの拠出額を確認してください。
+        <div class="stage-desc contribution-result-desc">
+            このラウンドの各プレイヤーの収益と、<br>
+            グループプロジェクトの成果を確認してください。
         </div>
     </div>
 
     <div class="stage-center">
-        <div class="contribution-row">
-            <div class="contribution-label">拠出額:</div>
-            <div class="contribution-bars">
+        <div class="contribution-result-stack">
+            <div class="player-earnings-row">
                 {% for row in players_data %}
                 {% with p=row.player %}
-                <div class="contribution-item" style="--idx: {{ forloop.counter0 }};">
+                <div class="player-earning-item" style="--idx: {{ forloop.counter0 }};">
                     <div class="player-label">
                         {% if p == player %}
                             <strong>あなた</strong>
@@ -33,21 +32,26 @@
                             プレイヤー {{ p.id_in_group }}
                         {% endif %}
                     </div>
-                    <div class="bar-track" data-value="{{ row.contribution }}" data-max="{{ row.available_before_contribution }}">
-                        <div class="bar-fill"></div>
-                        <span class="bar-text">{{ row.contribution }} / {{ row.available_before_contribution }}</span>
+                    <div class="player-earning-value">
+                        <span class="earning-number">{{ row.current_total_display }}</span>
+                        <span class="earning-unit"> MUs</span>
                     </div>
                 </div>
                 {% endwith %}
                 {% endfor %}
             </div>
+
+            <div class="project-outcome-block">
+                <div class="project-outcome-title">グループプロジェクトの成果</div>
+                <div class="project-outcome-track">
+                    <div class="project-outcome-fill" style="width: {{ project_outcome_fill_percent }}%;"></div>
+                    <span class="project-outcome-text">{{ project_outcome_value_display }} / {{ project_outcome_max_display }}</span>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="stage-footer">
-        {% if player.round_number == 1 %}
-            <div class="matrix-note">第1ラウンドでは罰の段階はありません。次のラウンドに進みます。</div>
-        {% endif %}
         {% next_button %}
     </div>
 </div>
@@ -57,39 +61,129 @@
 {% block internal_scripts %}
     {{ super() }}
     <style>
-        .contribution-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 1.8rem;
-            width: 100%;
+        .contribution-result-overview .stage-center {
+            align-items: flex-start;
+            padding-top: 0.8rem;
         }
 
-        .contribution-label {
-            color: var(--ui-muted);
-            font-size: 0.78rem;
-            min-width: 90px;
+        .contribution-result-desc {
+            max-width: 430px;
             text-align: right;
         }
 
-        .contribution-bars {
+        .contribution-result-stack {
+            width: min(980px, 100%);
             display: flex;
-            align-items: flex-end;
-            gap: 1.4rem;
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            padding-bottom: 0.35rem;
+            flex-direction: column;
+            align-items: center;
+            gap: 10.2rem;
         }
 
-        .contribution-item {
+        .player-earnings-row {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1.2rem;
+            flex-wrap: nowrap;
+            overflow-x: hidden;
+            padding-bottom: 0.25rem;
+        }
+
+        .player-earning-item {
+            min-width: 0;
+            flex: 1 1 0;
+            max-width: 180px;
             text-align: center;
             animation: fadeUp 0.6s ease both;
             animation-delay: calc(var(--idx, 0) * 0.06s);
-            min-width: 140px;
         }
 
-        .contribution-item .bar-track {
-            width: 140px;
+        .player-earning-item .player-label {
+            margin-bottom: 1rem;
+            height: 24px;
+        }
+
+        .player-earning-value {
+            font-size: 1.02rem;
+            font-weight: 400;
+            line-height: 1;
+            letter-spacing: 0.01em;
+            color: #f2f2f2;
+        }
+
+        .player-earning-value .earning-number {
+            font-size: inherit;
+            font-weight: inherit;
+        }
+
+        .player-earning-value .earning-unit {
+            font-size: inherit;
+            font-weight: inherit;
+        }
+
+        .project-outcome-block {
+            width: min(760px, 100%);
+            text-align: center;
+        }
+
+        .project-outcome-title {
+            font-size: 0.95rem;
+            color: #e6e6e6;
+            margin-bottom: 0.8rem;
+            font-weight: 400;
+        }
+
+        .project-outcome-track {
+            width: 100%;
+            height: var(--ui-common-bar-height);
+            border: 1px solid #d8dce1;
+            background: #2f3238;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-outcome-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0%;
+            background: #d8dce1;
+        }
+
+        .project-outcome-text {
+            position: absolute;
+            inset: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #b8bec7;
+            font-size: 0.86rem;
+            font-weight: 400;
+            letter-spacing: 0.01em;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        @media (max-width: 900px) {
+            .player-earnings-row {
+                justify-content: flex-start;
+                gap: 1.5rem;
+                overflow-x: auto;
+            }
+
+            .player-earning-value {
+                font-size: inherit;
+            }
+
+            .player-earning-value .earning-number {
+                font-size: inherit;
+            }
+
+            .player-earning-value .earning-unit {
+                font-size: inherit;
+            }
         }
     </style>
 {% endblock %}

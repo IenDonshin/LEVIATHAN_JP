@@ -17,6 +17,8 @@
         --ui-warn-strong: #c7972f;
         --ui-danger: #d16a3a;
         --ui-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        --ui-common-bar-width: 160px;
+        --ui-common-bar-height: 30px;
     }
 
     body {
@@ -191,9 +193,17 @@
         flex-wrap: wrap;
     }
 
-    .action-row .btn,
-    .action-row .otree-next-button {
+    .action-row .btn {
         min-width: 140px;
+    }
+
+    .action-row .otree-next-button,
+    .action-row .otree-btn-next,
+    .action-row button[type="submit"] {
+        min-width: 0 !important;
+        width: fit-content !important;
+        max-width: 100%;
+        flex: 0 0 auto !important;
     }
 
     .player-grid {
@@ -288,6 +298,10 @@
 
     .bar-track--warn .bar-fill {
         background: var(--ui-warn);
+    }
+
+    .bar-track--blue .bar-fill {
+        background: var(--ui-accent);
     }
 
     .bar-text {
@@ -398,6 +412,14 @@
 
     .ui-slider::-moz-range-track {
         background: transparent;
+    }
+
+    .ui-slider.ui-slider--blue {
+        background: #2a2a2a;
+    }
+
+    .ui-slider.ui-slider--yellow {
+        background: #2a2a2a;
     }
 
     .input-with-slider--compact {
@@ -645,6 +667,45 @@
         return minutes + ':' + seconds;
     }
 
+    function resolveSliderColor(rangeInput) {
+        if (!rangeInput) {
+            return '#3b74c6';
+        }
+        if (rangeInput.classList.contains('ui-slider--yellow')) {
+            return '#c7972f';
+        }
+        return '#3b74c6';
+    }
+
+    function updateSliderFill(rangeInput) {
+        if (!rangeInput) {
+            return;
+        }
+        var min = parseFloat(rangeInput.min || '0');
+        var max = parseFloat(rangeInput.max || '0');
+        var value = parseFloat(rangeInput.value || '0');
+        if (!Number.isFinite(min)) {
+            min = 0;
+        }
+        if (!Number.isFinite(max) || max <= min) {
+            max = min + 1;
+        }
+        if (!Number.isFinite(value)) {
+            value = min;
+        }
+        var pct = ((value - min) / (max - min)) * 100;
+        pct = Math.max(0, Math.min(100, pct));
+        var color = resolveSliderColor(rangeInput);
+        if (rangeInput.classList.contains('ui-slider--vertical-rotated')) {
+            rangeInput.style.background = 'linear-gradient(to right, ' + color + ' 0%, ' + color + ' ' + pct.toFixed(2) + '%, #2a2a2a ' + pct.toFixed(2) + '%, #2a2a2a 100%)';
+        } else if (rangeInput.classList.contains('ui-slider--vertical')) {
+            rangeInput.style.background = 'linear-gradient(to top, ' + color + ' 0%, ' + color + ' ' + pct.toFixed(2) + '%, #2a2a2a ' + pct.toFixed(2) + '%, #2a2a2a 100%)';
+        } else {
+            rangeInput.style.background = 'linear-gradient(to right, ' + color + ' 0%, ' + color + ' ' + pct.toFixed(2) + '%, #2a2a2a ' + pct.toFixed(2) + '%, #2a2a2a 100%)';
+        }
+    }
+    window.updateSliderFill = updateSliderFill;
+
     function initInputSliders() {
         document.querySelectorAll('.input-with-slider').forEach(function (wrapper) {
             var numberInput = wrapper.querySelector('input.js-slider-input');
@@ -677,6 +738,7 @@
             if (Number.isFinite(currentValue)) {
                 rangeInput.value = currentValue;
             }
+            updateSliderFill(rangeInput);
 
             if (alreadyBound) {
                 return;
@@ -687,6 +749,7 @@
                 if (Number.isFinite(nextValue)) {
                     rangeInput.value = nextValue;
                 }
+                updateSliderFill(rangeInput);
             });
 
             numberInput.addEventListener('change', function () {
@@ -694,16 +757,19 @@
                 if (Number.isFinite(nextValue)) {
                     rangeInput.value = nextValue;
                 }
+                updateSliderFill(rangeInput);
             });
 
             rangeInput.addEventListener('input', function () {
                 numberInput.value = rangeInput.value;
                 numberInput.dispatchEvent(new Event('input', { bubbles: true }));
+                updateSliderFill(rangeInput);
             });
 
             rangeInput.addEventListener('change', function () {
                 numberInput.value = rangeInput.value;
                 numberInput.dispatchEvent(new Event('change', { bubbles: true }));
+                updateSliderFill(rangeInput);
             });
             wrapper.dataset.sliderBound = '1';
         });
@@ -815,5 +881,6 @@
             }
         });
     });
+
 </script>
 {% endblock %}

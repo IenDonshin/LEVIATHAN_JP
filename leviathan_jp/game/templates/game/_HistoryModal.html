@@ -1,5 +1,3 @@
-{# File: game/templates/game/_HistoryModal.html #}
-{# 履歴モーダルで再利用するテンプレート #}
 {% load otree static %}
 
 <style>
@@ -15,132 +13,382 @@
         z-index: 1050;
     }
 
+    #historyModal .modal-dialog.modal-xl {
+        width: min(96vw, 1380px);
+        max-width: min(96vw, 1380px);
+        margin: 0.4rem auto;
+    }
+
+    #historyModal .modal-content {
+        height: min(94vh, 1020px);
+        min-height: min(94vh, 1020px);
+        display: flex;
+        flex-direction: column;
+    }
+
+    #historyModal .modal-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        padding-bottom: 1rem;
+    }
+
     body.modal-open {
         overflow: hidden;
     }
+
+    .history-round-page {
+        display: none;
+        animation: fadeUp 0.24s ease both;
+        height: auto;
+        overflow: visible;
+    }
+
+    #historyModal.history-modal-scrollable .history-round-page {
+        height: auto;
+        overflow: visible;
+    }
+
+    .history-pager {
+        min-height: 0;
+    }
+
+    #historyModal.history-modal-scrollable .history-pager {
+        min-height: 0;
+    }
+
+    .history-round-head {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 0.7rem;
+        color: var(--ui-text);
+    }
+
+    .history-pagination {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        margin-top: 0.25rem;
+    }
+
+    .history-pagination-label {
+        font-size: 0.78rem;
+        color: var(--ui-muted);
+        letter-spacing: 0.02em;
+        text-transform: lowercase;
+        min-width: 44px;
+    }
+
+    .history-page-list {
+        display: flex;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+        flex-direction: row-reverse;
+    }
+
+    .history-page-btn.is-active {
+        border-color: var(--ui-accent);
+        background: rgba(59, 116, 198, 0.16);
+        color: #e7f0ff;
+    }
+
+    .history-page-btn {
+        min-width: 42px;
+        padding: 0.32rem 0.55rem;
+    }
+
+    .history-round-scale-host {
+        width: 100%;
+        overflow: hidden;
+    }
+
+    #historyModal.history-modal-scrollable .history-round-scale-host {
+        overflow: visible;
+    }
+
+    .history-round-scale-target {
+        display: inline-block;
+        transform-origin: left top;
+        will-change: transform;
+        padding-right: 0.45rem;
+    }
+
+    .history-result-table {
+        --punish-bar-width: var(--ui-common-bar-width);
+        --punish-bar-height: var(--ui-common-bar-height);
+        --punish-label-width: 180px;
+        --punish-gap: 2.2rem;
+        --punish-gap-y: 1.1rem;
+        --punish-frame: 1px;
+        border-spacing: var(--punish-gap) var(--punish-gap-y);
+        table-layout: fixed;
+        width: auto;
+    }
+
+    .history-result-table th {
+        font-size: 0.7rem;
+        letter-spacing: 0.02em;
+        padding: 0.3rem 0.3rem;
+        vertical-align: bottom;
+    }
+
+    .history-result-table thead tr:nth-child(2) th:not(:first-child),
+    .history-result-table thead tr:nth-child(3) th:not(:first-child) {
+        padding: 0 !important;
+    }
+
+    .history-result-table thead tr:nth-child(3) th {
+        vertical-align: top !important;
+        padding-bottom: calc(var(--punish-gap-y) * 2) !important;
+    }
+
+    .history-result-table .bar-track--compact {
+        width: 100%;
+        height: var(--punish-bar-height);
+        border-color: #7a7a7a;
+        background: #303030;
+        box-sizing: border-box;
+    }
+
+    .history-result-table .bar-track--compact .bar-text {
+        font-size: 0.68rem;
+        color: #efefef;
+    }
+
+    .history-result-table .dp-cost-box {
+        border: 1px solid #b06a35;
+        color: #b06a35;
+        font-size: 0.68rem;
+        border-radius: 2px;
+        text-align: center;
+        background: rgba(40, 32, 24, 0.65);
+        width: 100%;
+        height: var(--punish-bar-height);
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .history-result-table .dp-cost-fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 0%;
+        background: #b06a35;
+        opacity: 0.65;
+    }
+
+    .history-result-table .dp-cost-text {
+        position: relative;
+        z-index: 1;
+        color: #f0e7dd;
+    }
+
+    .history-result-table .player-row-label {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.72rem;
+    }
+
+    .history-result-table .player-name {
+        min-width: 96px;
+        display: inline-block;
+    }
+
+    .history-result-table .power-tag {
+        color: #3b74c6;
+    }
+
+    .history-result-table td.matrix-slider-cell--static {
+        padding: 0 !important;
+        height: var(--punish-bar-height);
+        position: relative;
+        overflow: visible;
+        background: linear-gradient(
+            to right,
+            #c7972f 0%,
+            #c7972f var(--punish-fill, 0%),
+            #2f2f2f var(--punish-fill, 0%),
+            #2f2f2f 100%
+        );
+        border: var(--punish-frame) solid #c7972f;
+        box-sizing: border-box;
+    }
+
+    .history-result-table td.matrix-slider-cell--static .slider-value {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        color: #f2f2f2;
+        font-size: 0.7rem;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .history-result-table td.matrix-slider-cell--static .slider-effect {
+        color: #c7972f;
+        font-size: 0.7rem;
+        position: absolute;
+        right: calc(-0.5 * var(--punish-gap));
+        top: 50%;
+        transform: translate(50%, -50%);
+        white-space: nowrap;
+        pointer-events: none;
+    }
+
+    .history-result-table td {
+        border-color: transparent;
+        background: #2f2f2f;
+        height: var(--punish-bar-height);
+        min-width: var(--punish-bar-width);
+    }
+
+    .history-result-table td.matrix-note {
+        border-color: transparent;
+        background: transparent;
+    }
+
+    .history-result-table th:first-child,
+    .history-result-table td:first-child {
+        width: var(--punish-label-width);
+        min-width: var(--punish-label-width);
+    }
+
+    .history-result-table th:not(:first-child),
+    .history-result-table td:not(:first-child) {
+        width: var(--punish-bar-width);
+    }
+
+    .history-result-table td.is-self {
+        border-color: transparent;
+        background: #343434;
+    }
 </style>
 
-<div class="modal fade" id="historyModal" tabindex="-1" role="dialog" aria-labelledby="historyModalLabel" aria-hidden="true">
+<div class="modal fade{% if history_allow_vertical_scroll %} history-modal-scrollable{% endif %}" id="historyModal" tabindex="-1" role="dialog" aria-labelledby="historyModalLabel" aria-hidden="true" data-history-scrollable="{% if history_allow_vertical_scroll %}1{% else %}0{% endif %}">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="historyModalLabel"><i class="fas fa-history"></i> 全履歴</h5>
             </div>
-            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-                
+            <div class="modal-body">
                 {% if history_rounds %}
-                {% for round_data in history_rounds %}
-                    <div class="card mb-3">
-                        <div class="card-header">
-                           <strong>ラウンド {{ round_data.round_number }} の結果</strong>
-                        </div>
-                        <div class="card-body">
-                            {# --- Summary --- #}
-                            <table class="table table-bordered text-center table-sm">
-                                <tbody>
-                                    <tr class="thead-light">
-                                        <th></th>
-                                        {% for entry in round_data.players %}
-                                            <th>プレイヤー {{ entry.id_in_group }}</th>
-                                        {% endfor %}
-                                    </tr>
-                                    <tr>
-                                        <td><strong>ラウンド貢献金額</strong></td>
-                                        {% for entry in round_data.players %}
-                                            <td>{{ entry.contribution }} / {{ entry.endowment }}</td>
-                                        {% endfor %}
-                                    </tr>
-                                    {% if round_data.has_power_transfer %}
-                                    {% if not is_defined('show_power_info') or show_power_info %}
-                                    <tr>
-                                        <td><strong>罰威力</strong></td>
-                                        {% for entry in round_data.players %}
-                                            <td>{{ entry.power_after_display }} / 1.0</td>
-                                        {% endfor %}
-                                    </tr>
-                                    <tr>
-                                        <td><strong>譲渡 / 受取</strong></td>
-                                        {% for entry in round_data.players %}
-                                            <td>- {{ entry.power_transfer_out_display }} / + {{ entry.power_transfer_in_display }}</td>
-                                        {% endfor %}
-                                    </tr>
-                                    <tr>
-                                        <td><strong>移譲コスト</strong></td>
-                                        {% for entry in round_data.players %}
-                                            <td>{{ entry.power_transfer_cost }}</td>
-                                        {% endfor %}
-                                    </tr>
-                                    {% endif %}
-                                    {% endif %}
-                                    {% if round_data.has_punishment %}
-                                    <tr>
-                                        <td><strong>消費罰ポイント</strong></td>
-                                        {% for entry in round_data.players %}
-                                            <td>{{ entry.punishment_sent_total }}</td>
-                                        {% endfor %}
-                                    </tr>
-                                    {% endif %}
-                                </tbody>
-                            </table>
-
-                            {% if round_data.has_power_transfer %}
-                            {% if not is_defined('show_power_info') or show_power_info %}
-                            <h6 class="mt-3">罰威力の移譲履歴</h6>
-                            <table class="table table-bordered text-center table-sm">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th>↓移譲先 / 移譲元→</th>
-                                        {% for entry in round_data.players %}
-                                            <th>プレイヤー {{ entry.id_in_group }} から</th>
-                                        {% endfor %}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for transfer_row in round_data.transfer_rows %}
-                                    <tr>
-                                        <td><strong>プレイヤー {{ transfer_row.giver_id }}</strong></td>
-                                        {% for cell in transfer_row.cells %}
-                                            <td>{% if cell.is_self %}-{% else %}{{ cell.amount_display }}{% endif %}</td>
-                                        {% endfor %}
-                                    </tr>
+                <div class="history-pager">
+                    {% for round_data in history_rounds %}
+                    <div class="history-round-page" data-history-page="{{ forloop.counter0 }}" data-round-number="{{ round_data.round_number }}">
+                        <div class="history-round-head">ラウンド {{ round_data.round_number }} の結果</div>
+                        <div class="history-round-scale-host">
+                        <div class="history-round-scale-target">
+                        <table class="matrix-table matrix-table--inputs history-result-table">
+                            <colgroup>
+                                <col style="width: var(--punish-label-width);">
+                                {% for entry in round_data.players %}
+                                    <col style="width: var(--punish-bar-width);">
+                                {% endfor %}
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    {% for entry in round_data.players %}
+                                        <th>
+                                            {% if entry.id_in_group == player.id_in_group %}
+                                                あなた
+                                            {% else %}
+                                                プレイヤー {{ entry.id_in_group }}
+                                            {% endif %}
+                                        </th>
                                     {% endfor %}
-                                </tbody>
-                            </table>
-                            {% endif %}
-                            {% endif %}
-
-                            {# --- Summary Matrix --- #}
+                                </tr>
+                                <tr>
+                                    <th class="matrix-note">貢献MUs</th>
+                                    {% for entry in round_data.players %}
+                                        <th>
+                                            <div class="bar-track bar-track--compact bar-track--blue"
+                                                 data-value="{{ entry.contribution_display }}"
+                                                 data-max="{{ entry.endowment_display }}">
+                                                <div class="bar-fill"></div>
+                                                <span class="bar-text">{{ entry.contribution_display }} / {{ entry.endowment_display }}</span>
+                                            </div>
+                                        </th>
+                                    {% endfor %}
+                                </tr>
+                                {% if round_data.has_punishment %}
+                                <tr>
+                                    <th class="matrix-note">DPコスト</th>
+                                    {% for entry in round_data.players %}
+                                        <th>
+                                            <div class="dp-cost-box">
+                                                <div class="dp-cost-fill" style="width: {{ entry.punishment_sent_fill_percent }}%;"></div>
+                                                <span class="dp-cost-text">{{ entry.punishment_sent_total_display }} / {{ round_data.max_total_dp_display }}</span>
+                                            </div>
+                                        </th>
+                                    {% endfor %}
+                                </tr>
+                                {% endif %}
+                            </thead>
                             {% if round_data.has_punishment %}
-                            <h6 class="mt-3">罰交換のMatrix</h6>
-                            <table class="table table-bordered text-center table-sm">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th>↓受けた人 / 与えた人→</th>
-                                        {% for entry in round_data.players %}
-                                            <th>プレイヤー {{ entry.id_in_group }} から</th>
-                                        {% endfor %}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for matrix_row in round_data.matrix_rows %}
-                                    <tr>
-                                        <td><strong>プレイヤー {{ matrix_row.victim_id }}</strong></td>
-                                        {% for cell in matrix_row.cells %}
-                                            <td>{% if cell.is_self %}-{% else %}{{ cell.amount }}{% endif %}</td>
-                                        {% endfor %}
-                                    </tr>
+                            <tbody>
+                                {% for matrix_row in round_data.result_matrix_rows %}
+                                <tr>
+                                    <td class="matrix-note">
+                                        <div class="player-row-label">
+                                            <span class="player-name">
+                                                {% if matrix_row.is_self %}
+                                                    あなた
+                                                {% else %}
+                                                    プレイヤー {{ matrix_row.giver_id }}
+                                                {% endif %}
+                                            </span>
+                                            <span class="power-tag">({{ matrix_row.power_display }})</span>
+                                        </div>
+                                    </td>
+                                    {% for cell in matrix_row.cells %}
+                                        {% if cell.is_self %}
+                                            <td class="is-self">--</td>
+                                        {% else %}
+                                            <td class="matrix-slider-cell--static" style="--punish-fill: {{ cell.fill_percent }}%;">
+                                                <span class="slider-value">{{ cell.points_display }}/{{ round_data.per_target_dp_limit }}</span>
+                                                <span class="slider-effect">({{ cell.effect_display }})</span>
+                                            </td>
+                                        {% endif %}
                                     {% endfor %}
-                                </tbody>
-                            </table>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
                             {% endif %}
+                        </table>
+                        </div>
                         </div>
                     </div>
-                {% endfor %}
+                    {% endfor %}
+                </div>
                 {% else %}
-                    <p class="text-center text-muted">表示できる履歴がありません。</p>
+                    <p class="text-center text-muted mb-0">表示できる履歴がありません。</p>
                 {% endif %}
             </div>
             <div class="modal-footer">
+                {% if history_rounds %}
+                <div class="history-pagination">
+                    <span class="history-pagination-label">ラウンド</span>
+                    <div class="history-page-list">
+                        {% for round_data in history_rounds %}
+                        <button type="button" class="btn ui-button-ghost history-page-btn" data-history-goto="{{ forloop.counter0 }}">
+                            {{ round_data.round_number }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
                 <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal" data-history-close="true">閉じる</button>
             </div>
         </div>
@@ -162,6 +410,176 @@ document.addEventListener('DOMContentLoaded', function () {
     var closeButtons = modalEl.querySelectorAll('[data-dismiss="modal"], [data-bs-dismiss="modal"], [data-history-close="true"]');
     var backdropEl = null;
 
+    var pages = Array.prototype.slice.call(modalEl.querySelectorAll('[data-history-page]'));
+    var gotoButtons = Array.prototype.slice.call(modalEl.querySelectorAll('[data-history-goto]'));
+    var currentPage = pages.length ? (pages.length - 1) : 0;
+    var historyScaleFactor = 0.90;
+    var historyFooterReserve = 76;
+    var historyScrollable = modalEl.getAttribute('data-history-scrollable') === '1';
+    var cachedUnifiedScale = null;
+
+    function withPageMeasurable(pageEl, fn) {
+        if (!pageEl) {
+            return null;
+        }
+        var wasHidden = window.getComputedStyle(pageEl).display === 'none';
+        var prev = {
+            display: pageEl.style.display,
+            visibility: pageEl.style.visibility,
+            position: pageEl.style.position,
+            left: pageEl.style.left,
+            top: pageEl.style.top,
+            pointerEvents: pageEl.style.pointerEvents,
+        };
+        if (wasHidden) {
+            pageEl.style.display = 'block';
+            pageEl.style.visibility = 'hidden';
+            pageEl.style.position = 'absolute';
+            pageEl.style.left = '-100000px';
+            pageEl.style.top = '0';
+            pageEl.style.pointerEvents = 'none';
+        }
+        var result = fn();
+        if (wasHidden) {
+            pageEl.style.display = prev.display;
+            pageEl.style.visibility = prev.visibility;
+            pageEl.style.position = prev.position;
+            pageEl.style.left = prev.left;
+            pageEl.style.top = prev.top;
+            pageEl.style.pointerEvents = prev.pointerEvents;
+        }
+        return result;
+    }
+
+    function measureNaturalBounds(pageEl) {
+        return withPageMeasurable(pageEl, function () {
+            var target = pageEl.querySelector('.history-round-scale-target');
+            var head = pageEl.querySelector('.history-round-head');
+            if (!target) {
+                return { width: 0, height: 0, headHeight: 0 };
+            }
+            target.style.transform = 'scale(1)';
+            var width = target.scrollWidth || target.getBoundingClientRect().width || 0;
+            var height = target.scrollHeight || target.getBoundingClientRect().height || 0;
+            var headHeight = head ? head.offsetHeight : 0;
+            return { width: width, height: height, headHeight: headHeight };
+        });
+    }
+
+    function computeUnifiedScale() {
+        if (!pages.length) {
+            return 1;
+        }
+        var modalBody = modalEl.querySelector('.modal-body');
+        var visiblePage = pages[currentPage] || pages[0];
+        if (!visiblePage || !modalBody) {
+            return 1;
+        }
+        var host = visiblePage.querySelector('.history-round-scale-host');
+        var hostWidth = host ? (host.clientWidth || modalBody.clientWidth || 0) : (modalBody.clientWidth || 0);
+        var bodyHeight = modalBody.clientHeight || 0;
+        if (!hostWidth) {
+            return 1;
+        }
+
+        var maxWidth = 0;
+        var maxHeight = 0;
+        var maxHeadHeight = 0;
+        pages.forEach(function (pageEl) {
+            var m = measureNaturalBounds(pageEl);
+            maxWidth = Math.max(maxWidth, m.width || 0);
+            maxHeight = Math.max(maxHeight, m.height || 0);
+            maxHeadHeight = Math.max(maxHeadHeight, m.headHeight || 0);
+        });
+
+        if (!maxWidth || !maxHeight) {
+            return 1;
+        }
+
+        var scaleX = hostWidth / maxWidth;
+        var scale = 1;
+        if (historyScrollable) {
+            scale = Math.min(1, scaleX) * historyScaleFactor;
+        } else {
+            var availableHeight = Math.max(0, bodyHeight - maxHeadHeight - historyFooterReserve);
+            if (!availableHeight) {
+                return 1;
+            }
+            var scaleY = availableHeight / maxHeight;
+            scale = Math.min(1, scaleX, scaleY) * historyScaleFactor;
+        }
+        return Math.max(0.1, Math.min(1, scale));
+    }
+
+    function fitHistoryPage(pageEl, forcedScale) {
+        if (!pageEl) {
+            return;
+        }
+        var host = pageEl.querySelector('.history-round-scale-host');
+        var target = pageEl.querySelector('.history-round-scale-target');
+        if (!host || !target) {
+            return;
+        }
+
+        target.style.transform = 'scale(1)';
+        host.style.height = 'auto';
+
+        var naturalHeight = target.scrollHeight || target.getBoundingClientRect().height || 0;
+        if (!naturalHeight) {
+            return;
+        }
+
+        var scale = Number.isFinite(forcedScale) ? forcedScale : computeUnifiedScale();
+        scale = Math.max(0.1, Math.min(1, scale));
+
+        target.style.transform = 'scale(' + scale.toFixed(4) + ')';
+        host.style.height = Math.ceil(naturalHeight * scale) + 'px';
+    }
+
+    function renderPager() {
+        pages.forEach(function (pageEl, index) {
+            pageEl.style.display = index === currentPage ? 'block' : 'none';
+        });
+        gotoButtons.forEach(function (btn, index) {
+            if (index === currentPage) {
+                btn.classList.add('is-active');
+            } else {
+                btn.classList.remove('is-active');
+            }
+        });
+        if (typeof initBarTracks === 'function') {
+            initBarTracks();
+        }
+        if (!Number.isFinite(cachedUnifiedScale)) {
+            cachedUnifiedScale = computeUnifiedScale();
+        }
+        fitHistoryPage(pages[currentPage], cachedUnifiedScale);
+    }
+
+    function resetPager() {
+        currentPage = pages.length ? (pages.length - 1) : 0;
+        cachedUnifiedScale = null;
+        renderPager();
+    }
+
+    if (gotoButtons.length) {
+        gotoButtons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var idx = parseInt(btn.getAttribute('data-history-goto') || '0', 10);
+                if (!Number.isFinite(idx) || idx < 0 || idx >= pages.length) {
+                    return;
+                }
+                currentPage = idx;
+                renderPager();
+            });
+        });
+    }
+
+    window.addEventListener('resize', function () {
+        cachedUnifiedScale = null;
+        renderPager();
+    });
+
     function createBackdrop() {
         backdropEl = document.createElement('div');
         backdropEl.className = 'custom-history-backdrop';
@@ -179,6 +597,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (event) {
             event.preventDefault();
         }
+        resetPager();
 
         if (window.bootstrap && window.bootstrap.Modal) {
             var modalInstance = window.bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -238,5 +657,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hideModal(event);
         }
     });
+
+    renderPager();
 });
 </script>

@@ -24,12 +24,12 @@
             <div class="player-card" style="--idx: {{ forloop.counter0 }};">
                 <div class="player-label">
                     {% if p.id_in_group == player.id_in_group %}
-                        <strong>あなた（プレイヤー {{ p.id_in_group }}）</strong>
+                        <strong>あなた</strong>
                     {% else %}
                         プレイヤー {{ p.id_in_group }}
                     {% endif %}
                 </div>
-                <div class="summary-chip">{{ p.participant.payoff }} MUs</div>
+                <div class="summary-chip">{{ p.participant.payoff }}</div>
             </div>
             {% endfor %}
         </div>
@@ -37,7 +37,7 @@
 
     <div class="stage-footer">
         <div class="matrix-note" style="max-width: 620px; text-align: center;">
-            あなたの累積利得は {{ participant.payoff }} MUs です。<br>
+            あなたの累積利得は {{ participant.payoff }} です。<br>
             換金レート (1 MU = {{ session.config.real_world_currency_per_point }} {{ currency_code }}) に基づく成績報酬は {{ performance_payoff }}、
             参加費 {{ session.config.participation_fee }} {{ currency_code }} を含めた最終支払額は {{ final_payoff_jpy }} {{ currency_code }} です。
         </div>

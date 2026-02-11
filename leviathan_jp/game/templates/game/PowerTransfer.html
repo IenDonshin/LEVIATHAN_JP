@@ -2,7 +2,7 @@
 {% load otree static %}
 
 {% block title %}
-    罰威力移譲ステージ
+    移譲ステージ
 {% endblock %}
 
 {% block content %}
@@ -21,41 +21,54 @@
 
         <div class="stage-center">
             <div class="player-grid power-grid" data-power-max="{{ power_max }}">
-                {% for member in group.get_players %}
+                {% for member in members_data %}
                 <div class="player-card" style="--idx: {{ forloop.counter0 }};">
                     <div class="player-label">
-                        {% if member.id_in_group == player.id_in_group %}
-                            <strong>あなた（プレイヤー {{ member.id_in_group }}）</strong>
+                        {% if member.is_self %}
+                            <strong>あなた</strong>
                         {% else %}
                             プレイヤー {{ member.id_in_group }}
                         {% endif %}
                     </div>
-                    <div class="vertical-bar" data-power="{% if member.id_in_group == player.id_in_group %}{{ current_power }}{% else %}{{ member.punishment_power_before|round(3) }}{% endif %}" data-role="power-bar" {% if member.id_in_group == player.id_in_group %}data-self="true"{% endif %}>
+                    <div class="vertical-bar"
+                         data-power="{% if member.is_self %}{{ current_power }}{% else %}{{ member.power_before_value }}{% endif %}"
+                         data-base-power="{% if member.is_self %}{{ current_power }}{% else %}{{ member.power_before_value }}{% endif %}"
+                         data-member-id="{{ member.id_in_group }}"
+                         data-role="power-bar"
+                         {% if member.is_self %}data-self="true"{% endif %}>
                         <div class="vertical-bar-fill"></div>
-                        <div class="vertical-bar-value">{% if member.id_in_group == player.id_in_group %}{{ current_power_display }}{% else %}{{ member.punishment_power_before|round(1) }}{% endif %}</div>
+                        <div class="vertical-bar-base-fill"></div>
+                        <div class="vertical-bar-value">{% if member.is_self %}{{ current_power_display }}{% else %}{{ member.power_before_display }}{% endif %}</div>
+                        {% if not member.is_self %}
+                        <div class="vertical-bar-thumb" data-role="power-thumb"></div>
+                        {% endif %}
+                        {% if not member.is_self %}
+                        <input type="range"
+                               class="power-slider ui-slider ui-slider--compact ui-slider--blue ui-slider--vertical"
+                               orient="vertical"
+                               min="0"
+                               max="{{ max_transfer }}"
+                               step="{{ transfer_unit }}"
+                               value="{{ member.power_before_value }}"
+                               data-base-power="{{ member.power_before_value }}"
+                               data-target="{{ member.id_in_group }}">
+                        {% endif %}
                     </div>
-                    <div style="margin-top: 0.75rem;">
-                        {% if member.id_in_group == player.id_in_group %}
-                            <div class="matrix-note">譲渡入力なし</div>
+                    <div class="transfer-control">
+                        {% if member.is_self %}
+                            <div class="transfer-placeholder">譲渡入力なし</div>
                         {% else %}
-                            <div class="input-with-slider input-with-slider--compact">
-                                <div class="input-compact">
-                                    <input type="number"
-                                           id="transfer-input-{{ member.id_in_group }}"
-                                           name="power_transfer_p{{ member.id_in_group }}"
-                                           class="ui-input js-transfer-input decision-number"
-                                           min="0"
-                                           step="{{ transfer_unit }}"
-                                           value="0"
-                                           data-target="{{ member.id_in_group }}"
-                                           data-target-label="プレイヤー {{ member.id_in_group }}">
-                                </div>
-                                <input type="range"
-                                       class="ui-slider ui-slider--compact"
+                            <div class="transfer-input-only">
+                                <input type="number"
+                                       id="transfer-input-{{ member.id_in_group }}"
+                                       name="power_transfer_p{{ member.id_in_group }}"
+                                       class="ui-input js-transfer-input decision-number js-slider-input"
                                        min="0"
-                                       max="{{ max_transfer }}"
                                        step="{{ transfer_unit }}"
-                                       value="0">
+                                       value=""
+                                       placeholder="0.0"
+                                       data-target="{{ member.id_in_group }}"
+                                       data-target-label="プレイヤー {{ member.id_in_group }}">
                             </div>
                         {% endif %}
                     </div>
@@ -65,13 +78,11 @@
         </div>
 
         <div class="stage-footer">
+            {% if is_costly %}
             <div class="action-row">
-                <div class="summary-chip">移譲合計: <span id="total-transfer-out">0.0</span></div>
-                <div class="summary-chip">暫定の罰威力: <span id="preview-power">{{ current_power_display }}</span></div>
-                {% if is_costly %}
                 <div class="summary-chip">移譲コスト: <span id="preview-cost">0.0</span> {{ currency_label }}</div>
-                {% endif %}
             </div>
+            {% endif %}
 
             <div class="matrix-note" id="transfer-error" style="color: var(--ui-danger); display: none;"></div>
 
@@ -87,15 +98,181 @@
      data-cost-per-unit="{{ cost_per_unit }}"
      data-is-costly="{% if is_costly %}true{% else %}false{% endif %}"
      data-minimum="0"
-     data-max-transfer="{{ max_transfer }}">
+     data-max-transfer="{{ max_transfer }}"
+     data-self-id="{{ player.id_in_group }}">
 
 </div>
+
+<style>
+    .power-grid .player-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .power-grid {
+        --transfer-control-height: 116px;
+    }
+
+    .power-grid .transfer-control {
+        margin-top: 0.75rem;
+        height: var(--transfer-control-height);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .power-grid .transfer-placeholder {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+        color: var(--ui-muted);
+        text-align: center;
+        visibility: hidden;
+    }
+
+    .power-grid {
+        --power-bar-width: 39px;
+        --power-bar-height: 190px;
+        --power-thumb-height: 4.5px;
+    }
+
+    .power-grid .vertical-bar {
+        width: var(--power-bar-width);
+        height: var(--power-bar-height);
+        position: relative;
+        overflow: hidden;
+        display: block;
+    }
+
+    .power-grid .power-slider {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        writing-mode: bt-lr;
+        -webkit-appearance: slider-vertical;
+        appearance: slider-vertical;
+        background: transparent !important;
+        border: none !important;
+        z-index: 3;
+        margin: 0;
+        touch-action: none;
+    }
+
+    .power-grid .power-slider::-webkit-slider-runnable-track {
+        background: transparent;
+        border: none;
+    }
+
+    .power-grid .power-slider::-moz-range-track {
+        background: transparent;
+        border: none;
+    }
+
+    .power-grid .power-slider::-webkit-slider-thumb {
+        width: 14px;
+        height: 26px;
+        border-radius: 2px;
+        background: transparent;
+        border: none;
+        opacity: 0;
+    }
+
+    .power-grid .power-slider::-moz-range-thumb {
+        width: 14px;
+        height: 26px;
+        border-radius: 2px;
+        background: transparent;
+        border: none;
+        opacity: 0;
+    }
+
+    .power-grid .vertical-bar-thumb {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: var(--power-thumb-height);
+        background: rgba(120, 160, 220, 0.45);
+        border: 2px solid rgba(236, 236, 236, 0.7);
+        border-radius: 2px;
+        box-sizing: border-box;
+        pointer-events: none;
+        z-index: 4;
+    }
+
+    .power-grid .vertical-bar-base-fill {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 0%;
+        background: rgba(40, 75, 135, 1);
+        z-index: 1;
+    }
+
+    .power-grid .vertical-bar-fill {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background: rgba(120, 160, 220, 1);
+        height: 0%;
+        transition: none;
+        z-index: 2;
+    }
+
+    .power-grid .vertical-bar-value {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        transform: translateY(-50%);
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--ui-text);
+        z-index: 5;
+    }
+
+    .power-grid .transfer-input-only {
+        width: 4.5ch;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .power-grid .transfer-input-only input::placeholder {
+        color: var(--ui-muted);
+    }
+    .power-grid .ui-slider--vertical::-webkit-slider-thumb {
+        width: 12px;
+        height: 20px;
+        border-radius: 2px;
+        background: var(--ui-accent);
+        border: 2px solid #ececec;
+    }
+
+    .power-grid .ui-slider--vertical::-moz-range-thumb {
+        width: 12px;
+        height: 20px;
+        border-radius: 2px;
+        background: var(--ui-accent);
+        border: 2px solid #ececec;
+    }
+</style>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    var submitButtonLabel = document.querySelector('button.otree-next-button, button.otree-btn-next');
+    if (submitButtonLabel) {
+        submitButtonLabel.textContent = '決定';
+    }
+
     var configEl = document.getElementById('transfer-config');
     if (!configEl) {
         return;
@@ -134,6 +311,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var selfBar = document.querySelector('.vertical-bar[data-self="true"]');
     var selfValue = selfBar ? selfBar.querySelector('.vertical-bar-value') : null;
     var selfFill = selfBar ? selfBar.querySelector('.vertical-bar-fill') : null;
+    var selfId = configEl.dataset.selfId || '';
     var powerMax = 0;
     if (selfBar && selfBar.closest('[data-power-max]')) {
         powerMax = parseFloat(selfBar.closest('[data-power-max]').dataset.powerMax || '0');
@@ -142,32 +320,97 @@ document.addEventListener('DOMContentLoaded', function () {
         powerMax = 1;
     }
 
+    var barsById = {};
+    document.querySelectorAll('.vertical-bar[data-member-id]').forEach(function(bar) {
+        var id = bar.dataset.memberId || '';
+        var base = parseFloat(bar.dataset.basePower || bar.dataset.power || '0');
+        if (!Number.isFinite(base)) {
+            base = 0;
+        }
+        barsById[id] = { el: bar, base: base };
+    });
+
     function clampToUnit(value) {
         var scaled = Math.round(value / transferUnit) * transferUnit;
         return Math.max(0, parseFloat(scaled.toFixed(decimals + 1)));
     }
 
-    function updateSelfBar(remaining) {
-        if (!selfBar || !selfFill || !selfValue) {
+    function setBarValue(barEl, value) {
+        if (!barEl) {
             return;
         }
-        var pct = Math.max(0, Math.min(100, (remaining / powerMax) * 100));
-        selfFill.style.height = pct.toFixed(2) + '%';
-        selfValue.textContent = remaining.toFixed(displayDecimals);
+        var fillEl = barEl.querySelector('.vertical-bar-fill');
+        var baseEl = barEl.querySelector('.vertical-bar-base-fill');
+        var valueEl = barEl.querySelector('.vertical-bar-value');
+        var thumbEl = barEl.querySelector('.vertical-bar-thumb');
+        var isSelfBar = barEl.dataset.self === 'true';
+        var pct = Math.max(0, Math.min(100, (value / powerMax) * 100));
+        var basePower = parseFloat(barEl.dataset.basePower || '0');
+        if (!Number.isFinite(basePower)) {
+            basePower = 0;
+        }
+        var basePct = Math.max(0, Math.min(100, (basePower / powerMax) * 100));
+        if (baseEl) {
+            baseEl.style.height = basePct.toFixed(2) + '%';
+        }
+        if (fillEl) {
+            if (isSelfBar) {
+                var deltaPower = Math.max(0, basePower - value);
+                var deltaPct = Math.max(0, Math.min(100, (deltaPower / powerMax) * 100));
+                var coverBottomPct = Math.max(0, basePct - deltaPct);
+                fillEl.style.height = deltaPct.toFixed(2) + '%';
+                fillEl.style.bottom = coverBottomPct.toFixed(2) + '%';
+            } else {
+                var gainPower = Math.max(0, value - basePower);
+                var gainPct = Math.max(0, Math.min(100, (gainPower / powerMax) * 100));
+                fillEl.style.height = gainPct.toFixed(2) + '%';
+                fillEl.style.bottom = basePct.toFixed(2) + '%';
+            }
+        }
+        if (valueEl) {
+            valueEl.textContent = value.toFixed(displayDecimals);
+        }
+        if (thumbEl) {
+            var barHeight = barEl.clientHeight || 0;
+            var thumbHeight = thumbEl.offsetHeight || 0;
+            var fillPx = barHeight * (pct / 100);
+            var bottomPx = Math.max(0, Math.min(barHeight - thumbHeight, fillPx - thumbHeight));
+            thumbEl.style.bottom = bottomPx.toFixed(2) + 'px';
+        }
     }
 
     function updateTotals(enforceFormat) {
         var totalOut = 0;
+        var transferById = {};
 
         inputs.forEach(function (input) {
-            var rawText = input.value;
+            var rawText = (input.value || '').trim();
+            if (transferUnit < 1 && rawText !== '' && rawText.indexOf('.') === -1 && /^\d+$/.test(rawText)) {
+                rawText = (parseInt(rawText, 10) * transferUnit).toFixed(displayDecimals);
+                input.value = rawText;
+            }
             var raw = parseFloat(rawText);
             if (Number.isNaN(raw) || raw < 0) {
                 raw = 0;
             }
             var normalized = clampToUnit(raw);
-            if (enforceFormat) {
+            if (enforceFormat && rawText !== '') {
                 input.value = normalized.toFixed(displayDecimals);
+            }
+            var targetId = input.dataset.target || '';
+            if (targetId) {
+                transferById[targetId] = normalized;
+                var linkedSlider = document.querySelector('.power-slider[data-target="' + targetId + '"]');
+                if (linkedSlider) {
+                    var basePower = (barsById[targetId] && barsById[targetId].base) ? barsById[targetId].base : 0;
+                    var cappedValue = Math.min(basePower + normalized, Math.min(basePower + maxTransfer, powerMax));
+                    linkedSlider.min = 0;
+                    linkedSlider.max = powerMax;
+                    linkedSlider.value = Math.max(basePower, cappedValue);
+                    if (window.updateSliderFill) {
+                        window.updateSliderFill(linkedSlider);
+                    }
+                }
             }
             totalOut += normalized;
         });
@@ -183,7 +426,20 @@ document.addEventListener('DOMContentLoaded', function () {
         if (previewPowerEl) {
             previewPowerEl.textContent = remaining.toFixed(displayDecimals);
         }
-        updateSelfBar(remaining);
+        setBarValue(selfBar, remaining);
+        Object.keys(barsById).forEach(function(id) {
+            var barInfo = barsById[id];
+            if (!barInfo || !barInfo.el) {
+                return;
+            }
+            if (id === selfId) {
+                return;
+            }
+            var base = barInfo.base || 0;
+            var delta = transferById[id] || 0;
+            var nextValue = base + delta;
+            setBarValue(barInfo.el, nextValue);
+        });
 
         if (isCostly && costEl) {
             var units = totalOut / transferUnit;
@@ -206,11 +462,43 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    var transferSliders = Array.from(document.querySelectorAll('.power-slider'));
+
     inputs.forEach(function (input) {
         input.setAttribute('max', maxTransfer.toString());
         input.addEventListener('input', function () { updateTotals(false); });
         input.addEventListener('change', function () { updateTotals(true); });
         input.addEventListener('blur', function () { updateTotals(true); });
+    });
+
+    transferSliders.forEach(function (slider) {
+        var targetId = slider.dataset.target || '';
+        if (targetId) {
+            slider.dataset.target = targetId;
+        }
+        var basePower = (barsById[targetId] && barsById[targetId].base) ? barsById[targetId].base : 0;
+        slider.min = 0;
+        slider.max = powerMax;
+        slider.value = Math.max(0, Math.min(powerMax, basePower));
+        if (window.updateSliderFill) {
+            window.updateSliderFill(slider);
+        }
+        slider.addEventListener('input', function () {
+            var rawValue = parseFloat(slider.value || basePower);
+            var maxAllowed = Math.min(basePower + maxTransfer, powerMax);
+            var clampedValue = Math.min(Math.max(rawValue, basePower), maxAllowed);
+            slider.value = clampedValue;
+            if (window.updateSliderFill) {
+                window.updateSliderFill(slider);
+            }
+            var transferValue = clampToUnit(clampedValue - basePower);
+            var linkedInput = document.querySelector('#transfer-input-' + targetId);
+            if (linkedInput) {
+                linkedInput.value = transferValue.toFixed(displayDecimals);
+            }
+            updateTotals(false);
+        });
+        slider.addEventListener('change', function () { updateTotals(true); });
     });
 
     updateTotals(true);

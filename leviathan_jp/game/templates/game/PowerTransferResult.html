@@ -2,7 +2,7 @@
 {% load otree static %}
 
 {% block title %}
-    罰威力移譲の結果
+    移譲結果
 {% endblock %}
 
 {% block content %}
@@ -10,11 +10,12 @@
 <div class="stage-layout">
     <div class="stage-header">
         <div>
-            <div class="stage-title">移譲ステージ</div>
+            <div class="stage-title">移譲結果</div>
             <div class="stage-subtitle">第 {{ round_number }} ラウンドの結果</div>
         </div>
         <div class="stage-desc">
-            全員の決定が完了しました。各プレイヤーの罰威力は次のラウンドへ引き継がれます。
+            この画面では移譲後の罰威力を確認します。<br>
+            次は貢献ステージ、その後に罰ステージへ進みます。
         </div>
     </div>
 
@@ -24,12 +25,16 @@
             <div class="player-card" style="--idx: {{ forloop.counter0 }};">
                 <div class="player-label">
                     {% if col.is_self %}
-                        <strong>あなた（{{ col.header }}）</strong>
+                        <strong>あなた</strong>
                     {% else %}
-                        {{ col.header }}
+                        プレイヤー {{ col.id_in_group }}
                     {% endif %}
                 </div>
-                <div class="vertical-bar" data-power="{{ col.final_power_value }}" {% if col.is_self %}data-self="true"{% endif %}>
+                <div class="vertical-bar"
+                     data-power="{{ col.final_power_value }}"
+                     data-base-power="{{ col.base_power_value }}"
+                     {% if col.is_self %}data-self="true"{% endif %}>
+                    <div class="vertical-bar-base-fill"></div>
                     <div class="vertical-bar-fill"></div>
                     <div class="vertical-bar-value">{{ col.final_power_display }}</div>
                 </div>
@@ -47,4 +52,98 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block global_styles %}
+{{ super() }}
+<style>
+    .power-grid {
+        --power-bar-width: 39px;
+        --power-bar-height: 190px;
+    }
+
+    .power-grid .vertical-bar {
+        width: var(--power-bar-width);
+        height: var(--power-bar-height);
+        position: relative;
+        overflow: hidden;
+        display: block;
+    }
+
+    .power-grid .vertical-bar-base-fill {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 0%;
+        background: rgba(40, 75, 135, 1);
+        z-index: 1;
+    }
+
+    .power-grid .vertical-bar-fill {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background: rgba(120, 160, 220, 1);
+        height: 0%;
+        z-index: 2;
+    }
+
+    .power-grid .vertical-bar-value {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        transform: translateY(-50%);
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--ui-text);
+        z-index: 5;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.power-grid .vertical-bar').forEach(function (barEl) {
+        var maxEl = barEl.closest('[data-power-max]');
+        var powerMax = maxEl ? parseFloat(maxEl.dataset.powerMax || '0') : 0;
+        if (!Number.isFinite(powerMax) || powerMax <= 0) {
+            powerMax = 1;
+        }
+
+        var basePower = parseFloat(barEl.dataset.basePower || '0');
+        var finalPower = parseFloat(barEl.dataset.power || '0');
+        if (!Number.isFinite(basePower)) {
+            basePower = 0;
+        }
+        if (!Number.isFinite(finalPower)) {
+            finalPower = 0;
+        }
+
+        var basePct = Math.max(0, Math.min(100, (basePower / powerMax) * 100));
+        var finalPct = Math.max(0, Math.min(100, (finalPower / powerMax) * 100));
+
+        var baseEl = barEl.querySelector('.vertical-bar-base-fill');
+        var fillEl = barEl.querySelector('.vertical-bar-fill');
+        if (baseEl) {
+            baseEl.style.height = basePct.toFixed(2) + '%';
+        }
+        if (fillEl) {
+            if (finalPower >= basePower) {
+                var gainPct = Math.max(0, finalPct - basePct);
+                fillEl.style.height = gainPct.toFixed(2) + '%';
+                fillEl.style.bottom = basePct.toFixed(2) + '%';
+            } else {
+                var lossPct = Math.max(0, basePct - finalPct);
+                fillEl.style.height = lossPct.toFixed(2) + '%';
+                fillEl.style.bottom = finalPct.toFixed(2) + '%';
+            }
+        }
+    });
+});
+</script>
 {% endblock %}
