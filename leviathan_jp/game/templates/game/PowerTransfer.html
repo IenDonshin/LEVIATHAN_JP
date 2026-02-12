@@ -14,8 +14,9 @@
                 <div class="stage-subtitle">第 {{ player.round_number }} ラウンド</div>
             </div>
             <div class="stage-desc">
-                罰威力を他の参加者に移譲できます。入力は {{ transfer_unit_display }} 単位です。<br>
-                {% if is_costly %}1単位あたり {{ cost_per_unit_display }} {{ currency_label }} のコストが発生します。{% else %}移譲コストはありません。{% endif %}
+                罰威力を他の参加者に移譲できます。<br>
+                {% if transfer_unit_is_fractional %}入力欄で「1」と入力すると {{ transfer_unit_display }} 単位の移譲になります。{% endif %}<br>
+                {% if is_costly %}1単位あたり {{ cost_per_unit_display }} {{ cost_per_unit_label }} のコストが発生します。{% else %}移譲コストはありません。{% endif %}
             </div>
         </div>
 
@@ -80,7 +81,7 @@
         <div class="stage-footer">
             {% if is_costly %}
             <div class="action-row">
-                <div class="summary-chip">移譲コスト: <span id="preview-cost">0.0</span> {{ currency_label }}</div>
+                <div class="summary-chip">移譲コスト: <span id="preview-cost">0.0</span> <span id="preview-cost-unit">{{ currency_label_plural }}</span></div>
             </div>
             {% endif %}
 
@@ -96,6 +97,8 @@
      data-current-power="{{ current_power }}"
      data-transfer-unit="{{ transfer_unit }}"
      data-cost-per-unit="{{ cost_per_unit }}"
+     data-currency-singular="{{ currency_label_singular }}"
+     data-currency-plural="{{ currency_label_plural }}"
      data-is-costly="{% if is_costly %}true{% else %}false{% endif %}"
      data-minimum="0"
      data-max-transfer="{{ max_transfer }}"
@@ -305,6 +308,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var totalOutEl = document.getElementById('total-transfer-out');
     var previewPowerEl = document.getElementById('preview-power');
     var costEl = document.getElementById('preview-cost');
+    var costUnitEl = document.getElementById('preview-cost-unit');
     var errorEl = document.getElementById('transfer-error');
     var form = document.querySelector('form.otree-form');
     var submitButton = form ? form.querySelector('button.otree-next-button') : null;
@@ -445,6 +449,12 @@ document.addEventListener('DOMContentLoaded', function () {
             var units = totalOut / transferUnit;
             var totalCost = units * costPerUnit;
             costEl.textContent = totalCost.toFixed(displayDecimals);
+            if (costUnitEl) {
+                var singularLabel = configEl.dataset.currencySingular || '';
+                var pluralLabel = configEl.dataset.currencyPlural || singularLabel;
+                var useSingular = Math.abs(totalCost - 1) < 1e-6;
+                costUnitEl.textContent = useSingular ? singularLabel : pluralLabel;
+            }
         }
 
         if (errorEl) {

@@ -1,5 +1,6 @@
 # game/pages.py
 
+from otree import settings as otree_settings
 from otree.api import Page, WaitPage
 
 from .models import Constants
@@ -12,6 +13,14 @@ def _int_display(value):
         return str(int(round(float(value or 0))))
     except (TypeError, ValueError):
         return "0"
+
+
+def _currency_labels():
+    """Return singular/plural labels for points."""
+    label = getattr(otree_settings, "POINTS_CUSTOM_NAME", None) or "MU"
+    if label.endswith("s") and len(label) > 1:
+        return label[:-1], label
+    return label, label
 
 
 def build_history_rounds(player):
@@ -485,12 +494,20 @@ class PowerTransfer(BasePage):
             )
 
         is_costly = session.config.get("costly_punishment_transfer", False)
+        currency_label_singular, currency_label_plural = _currency_labels()
+        cost_per_unit_value = float(cost_per_unit or 0)
+        cost_per_unit_label = (
+            currency_label_singular
+            if abs(cost_per_unit_value - 1.0) < 1e-6
+            else currency_label_plural
+        )
 
         return dict(
             current_power=player.punishment_power_before,
             current_power_display=f"{player.punishment_power_before:.1f}",
             transfer_unit=transfer_unit,
             transfer_unit_display=f"{transfer_unit:.1f}",
+            transfer_unit_is_fractional=float(transfer_unit or 0) < 1,
             others_data=others_data,
             members_data=members_data,
             max_transfer=player.punishment_power_before,
@@ -499,7 +516,9 @@ class PowerTransfer(BasePage):
             transfer_cost_per_unit=cost_per_unit,
             cost_per_unit=cost_per_unit,
             cost_per_unit_display=f"{cost_per_unit:.1f}",
-            currency_label=session.config.get('real_world_currency_code', 'MU'),
+            currency_label_singular=currency_label_singular,
+            currency_label_plural=currency_label_plural,
+            cost_per_unit_label=cost_per_unit_label,
             players_status=[],
             timeout_seconds=PowerTransfer.get_timeout_seconds(player),
             power_max=Constants.players_per_group,
@@ -897,6 +916,7 @@ class RoundResult(BasePage):
         )
 
         endowment = session.config['endowment']
+        endowment_display = _int_display(endowment)
         per_target_dp_limit = session.config.get('per_target_dp_limit', session.config['deduction_points'])
         endowment_currency = c(endowment)
         share = player.group.individual_share
@@ -925,6 +945,8 @@ class RoundResult(BasePage):
                 contribution=member.contribution,
                 contribution_display=_int_display(member.contribution),
                 endowment=endowment_currency,
+                endowment_value=endowment,
+                endowment_display=endowment_display,
                 punishment_sent_total=0,
                 punishment_sent_total_display="0",
                 punishment_received_total=0,
