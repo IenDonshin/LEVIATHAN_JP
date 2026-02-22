@@ -4,19 +4,19 @@ from os import environ
 ROOMS = [
     dict(
         name='fixed',
-        display_name='罰威力の固定',
+        display_name='減点効果の固定',
         participant_label_file='_rooms/fixed.txt',
         use_secure_urls=True
     ),
     dict(
         name='transfer_free',
-        display_name='コストなしの罰威力の移譲',
+        display_name='コストなしの減点効果の移譲',
         participant_label_file='_rooms/transfer_free.txt',
         use_secure_urls=True
     ),
     dict(
         name='transfer_cost',
-        display_name='コストありの罰威力の移譲',
+        display_name='コストありの減点効果の移譲',
         participant_label_file='_rooms/transfer_cost.txt',
         use_secure_urls=True
     ),
@@ -43,17 +43,17 @@ SESSION_CONFIG_DEFAULTS = dict(
 SESSION_CONFIGS = [
     dict(
         name='pggp_fixed',
-        display_name="公共財ゲーム（罰威力固定）",
-        app_sequence=['introduction', 'game', 'survey'], 
+        display_name="公共財ゲーム（減点効果固定）",
+        app_sequence=['game', 'survey'], 
         num_demo_participants=5,
         players_per_group=5,
         num_rounds=20,  # ラウンド数
         endowment=20,  # 初期保有額
         contribution_multiplier=1.5,  # 公共財の効率係数
-        deduction_points=10,  # 初期罰ポイント
-        power_effectiveness=1.0,  # 罰威力
-        punishment_cost=1.0, # 罰コスト
-        power_transfer_allowed=False,  # 罰威力の移譲不可
+        deduction_points=10,  # 初期減点上限
+        power_effectiveness=1.0,  # 減点効果
+        punishment_cost=1.0, # 減点コスト
+        power_transfer_allowed=False,  # 減点効果の移譲不可
         costly_punishment_transfer=False,  # コストなし
         power_transfer_cost_rate=0.0,
         punishment_transfer_unit=0.1,
@@ -64,17 +64,17 @@ SESSION_CONFIGS = [
     ),
     dict(
         name='pggp_transfer_free',
-        display_name="公共財ゲーム（罰威力移譲・コストなし）",
-        app_sequence=['introduction', 'game', 'survey'], 
+        display_name="公共財ゲーム（減点効果移譲・コストなし）",
+        app_sequence=['game', 'survey'], 
         num_demo_participants=5,
         players_per_group=5,
         num_rounds=20,  # ラウンド数
         endowment=20,  # 初期保有額
         contribution_multiplier=1.5,  # 公共財の効率係数
-        deduction_points=10,  # 初期罰ポイント
-        power_effectiveness=1.0,  # 罰威力
-        punishment_cost=1.0, # 罰コスト
-        power_transfer_allowed=True,  # 罰威力の移譲可
+        deduction_points=10,  # 初期減点上限
+        power_effectiveness=1.0,  # 減点効果
+        punishment_cost=1.0, # 減点コスト
+        power_transfer_allowed=True,  # 減点効果の移譲可
         costly_punishment_transfer=False,  # コストなし
         power_transfer_cost_rate=0.0,
         punishment_transfer_unit=0.1,
@@ -85,17 +85,17 @@ SESSION_CONFIGS = [
     ),
     dict(
         name='pggp_transfer_cost',
-        display_name="公共財ゲーム（罰威力移譲・コストあり）",
-        app_sequence=['introduction', 'game', 'survey'], 
+        display_name="公共財ゲーム（減点効果移譲・コストあり）",
+        app_sequence=['game', 'survey'], 
         num_demo_participants=5,
         players_per_group=5,
         num_rounds=20,  # ラウンド数
         endowment=20,  # 初期保有額
         contribution_multiplier=1.5,  # 公共財の効率係数
-        deduction_points=10,  # 初期罰ポイント
-        power_effectiveness=1.0,  # 罰威力
-        punishment_cost=1.0, # 罰コスト
-        power_transfer_allowed=True,  # 罰威力移譲可
+        deduction_points=10,  # 初期減点上限
+        power_effectiveness=1.0,  # 減点効果
+        punishment_cost=1.0, # 減点コスト
+        power_transfer_allowed=True,  # 減点効果移譲可
         costly_punishment_transfer=True,  # コストあり
         power_transfer_cost_rate=1.0,
         punishment_transfer_unit=0.1,
@@ -110,7 +110,7 @@ LANGUAGE_CODE = 'ja'
 REAL_WORLD_CURRENCY_CODE = 'JPY'
 USE_POINTS = True
 TIME_ZONE = "Asia/Tokyo"
-POINTS_CUSTOM_NAME = "MUs"
+POINTS_CUSTOM_NAME = "MU"
 POINTS_DECIMAL_PLACES = 1
 
 ADMIN_USERNAME = 'admin'
@@ -126,8 +126,8 @@ DEMO_PAGE_INTRO_HTML = """
     各roomのlinkから、対応する実験条件に参加してください
 </p>
 <ul>
-    <li><a href="/room/fixed">罰威力の固定</a></li>
-    <li><a href="/room/transfer_free">コストなしの罰威力の移譲</a></li>
-    <li><a href="/room/transfer_cost">コストありの罰威力の移譲</a></li>
+    <li><a href="/room/fixed">減点効果の固定</a></li>
+    <li><a href="/room/transfer_free">コストなしの減点効果の移譲</a></li>
+    <li><a href="/room/transfer_cost">コストありの減点効果の移譲</a></li>
 </ul>
 """

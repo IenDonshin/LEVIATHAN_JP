@@ -2,7 +2,7 @@
 {% load otree static %}
 
 {% block title %}
-    貢献結果
+    投資結果
 {% endblock %}
 
 {% block content %}
@@ -10,12 +10,12 @@
 <div class="stage-layout contribution-result-overview">
     <div class="stage-header">
         <div>
-            <div class="stage-title">貢献結果</div>
+            <div class="stage-title">投資結果</div>
             <div class="stage-subtitle">第 {{ player.round_number }} ラウンド</div>
         </div>
         <div class="stage-desc contribution-result-desc">
             このラウンドの各プレイヤーの収益と、<br>
-            グループプロジェクトの成果を確認してください。
+            グループ・プロジェクトの成果を確認してください。
         </div>
     </div>
 
@@ -34,7 +34,7 @@
                     </div>
                     <div class="player-earning-value">
                         <span class="earning-number">{{ row.current_total_display }}</span>
-                        <span class="earning-unit"> MUs</span>
+                        <span class="earning-unit"> MU</span>
                     </div>
                 </div>
                 {% endwith %}
@@ -42,7 +42,7 @@
             </div>
 
             <div class="project-outcome-block">
-                <div class="project-outcome-title">グループプロジェクトの成果</div>
+                <div class="project-outcome-title">グループ・プロジェクトの成果</div>
                 <div class="project-outcome-track">
                     <div class="project-outcome-fill" style="width: {{ project_outcome_fill_percent }}%;"></div>
                     <span class="project-outcome-text">{{ project_outcome_value_display }} / {{ project_outcome_max_display }}</span>

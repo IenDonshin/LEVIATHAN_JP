@@ -2,6 +2,8 @@ from otree.api import *
 
 from .models import Constants as C, Subsession, Group, Player  # type: ignore
 from .pages import (
+    RoundInstruction,
+    RoundQuiz,
     PowerTransfer,
     PowerTransferWait,
     PowerTransferResult,
@@ -15,10 +17,12 @@ from .pages import (
 )  # type: ignore
 
 doc = """
-Public goods game with punishment for the Leviathan project.
+Public goods game with deduction for the Leviathan project.
 """
 
 page_sequence = [
+    RoundInstruction,
+    RoundQuiz,
     PowerTransfer,
     PowerTransferWait,
     PowerTransferResult,

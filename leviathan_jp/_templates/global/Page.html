@@ -883,6 +883,14 @@
             el.addEventListener('input', function () {
                 this.setCustomValidity('');
             });
+            el.addEventListener('change', function () {
+                this.setCustomValidity('');
+                if (this.type === 'radio' && this.name) {
+                    document.querySelectorAll('input[type="radio"][name="' + this.name + '"]').forEach(function(radio) {
+                        radio.setCustomValidity('');
+                    });
+                }
+            });
         });
 
         document.addEventListener('keydown', function(event) {

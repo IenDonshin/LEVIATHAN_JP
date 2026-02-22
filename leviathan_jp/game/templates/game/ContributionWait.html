@@ -2,7 +2,7 @@
 {% load otree static %}
 
 {% block title %}
-    待機中...
+    待機中
 {% endblock %}
 
 {% block body_main %}
@@ -86,9 +86,12 @@
 </style>
 <div class="otree-wait-page">
     <div class="wait-panel">
-        <p>現在は貢献フェーズです。他の参加者が貢献額の入力を終えるまで、お待ちください。（{{ waiting_progress }}/{{ waiting_total }} 名が完了）</p>
+        <p>現在は投資フェーズです。他の参加者が投資額の入力を終えるまで、お待ちください。（{{ waiting_progress }}/{{ waiting_total }} 名が完了）</p>
     </div>
 </div>
+<script>
+    document.title = '待機中';
+</script>
 {% if waiting_progress < waiting_total %}
 <script>
     setTimeout(function () {

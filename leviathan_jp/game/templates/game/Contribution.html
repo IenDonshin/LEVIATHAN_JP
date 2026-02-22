@@ -2,7 +2,7 @@
 {% load otree static %}
 
 {% block title %}
-    貢献ステージ
+    投資フェーズ
 {% endblock %}
 
 {% block content %}
@@ -10,12 +10,12 @@
 <div class="stage-layout contribution-layout">
     <div class="stage-header">
         <div>
-            <div class="stage-title">貢献ステージ</div>
+            <div class="stage-title">投資フェーズ</div>
             <div class="stage-subtitle">第 {{ player.round_number }} / {{ C.num_rounds }} ラウンド</div>
         </div>
         <div class="stage-desc contribution-desc">
-            <span class="desc-line">あなたの保有額は {{ available_endowment_display }} MUs です。</span>
-            <span class="desc-line">0 から {{ contribution_limit_display }} の範囲でグループプロジェクトへの貢献MUsを入力してください。</span>
+            <span class="desc-line">あなたの保有額は {{ available_endowment_display }} MU です。</span>
+            <span class="desc-line">0 から {{ contribution_limit_display }} の範囲でグループ・プロジェクトへの投資MUを入力してください。</span>
         </div>
     </div>
 
@@ -31,7 +31,7 @@
 
         <div class="contribution-middle">
             <div class="contribution-input">
-                <label class="ui-label">貢献MUs</label>
+                <label class="ui-label">投資MU</label>
                 <div class="input-with-slider input-with-slider--stacked contribution-control">
                     <div class="slider-shell">
                         <input type="range"
@@ -273,11 +273,12 @@
             if (!Number.isFinite(maxVal)) {
                 maxVal = 0;
             }
+            var maxIntVal = Math.max(0, Math.floor(maxVal));
             var initialVal = parseFloat('{{ initial_contribution }}');
             if (!Number.isFinite(initialVal) || initialVal < 0) {
                 initialVal = 0;
             }
-            initialVal = Math.min(maxVal, Math.round(initialVal));
+            initialVal = Math.min(maxIntVal, Math.round(initialVal));
 
             var current = parseFloat(contributionInput.value);
             if (Number.isNaN(current) || current < 0) {
@@ -292,12 +293,28 @@
 
             contributionInput.setAttribute('step', '1');
             contributionInput.setAttribute('min', '0');
-            contributionInput.setAttribute('max', maxVal.toString());
+            contributionInput.setAttribute('max', maxIntVal.toString());
 
             var rangeInput = document.getElementById('contribution-range');
             var valueEl = document.getElementById('contribution-range-value');
             var thumbEl = document.getElementById('contribution-thumb');
             var originalUpdateSliderFill = window.updateSliderFill;
+            var form = document.querySelector('form.otree-form');
+
+            function normalizeContributionValue(rawValue) {
+                var value = parseFloat(rawValue);
+                if (!Number.isFinite(value)) {
+                    value = 0;
+                }
+                value = Math.round(value);
+                if (value < 0) {
+                    value = 0;
+                }
+                if (value > maxIntVal) {
+                    value = maxIntVal;
+                }
+                return value;
+            }
 
             function updateContributionThumb() {
                 if (!rangeInput || !thumbEl) {
@@ -334,11 +351,7 @@
             }
 
             function updateBar() {
-                var value = parseFloat(contributionInput.value);
-                if (!Number.isFinite(value)) {
-                    value = 0;
-                }
-                value = Math.round(value);
+                var value = normalizeContributionValue(contributionInput.value);
                 contributionInput.value = value.toString();
                 if (rangeInput) {
                     rangeInput.value = value.toString();
@@ -352,9 +365,20 @@
             }
 
             contributionInput.addEventListener('input', updateBar);
+            contributionInput.addEventListener('change', updateBar);
+            contributionInput.addEventListener('blur', updateBar);
             if (rangeInput) {
                 rangeInput.addEventListener('input', updateContributionThumb);
                 rangeInput.addEventListener('change', updateContributionThumb);
+            }
+            if (form) {
+                form.addEventListener('submit', function () {
+                    var clamped = normalizeContributionValue(contributionInput.value);
+                    contributionInput.value = clamped.toString();
+                    if (rangeInput) {
+                        rangeInput.value = clamped.toString();
+                    }
+                });
             }
             window.addEventListener('resize', updateContributionThumb);
             updateBar();

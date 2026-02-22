@@ -2,7 +2,7 @@
 {% load otree static %}
 
 {% block title %}
-    移譲ステージ
+    減点効果移譲フェーズ
 {% endblock %}
 
 {% block content %}
@@ -10,12 +10,13 @@
 <div class="stage-layout">
         <div class="stage-header">
             <div>
-                <div class="stage-title">移譲ステージ</div>
+                <div class="stage-title">減点効果移譲フェーズ</div>
                 <div class="stage-subtitle">第 {{ player.round_number }} ラウンド</div>
             </div>
             <div class="stage-desc">
-                罰威力を他の参加者に移譲できます。<br>
+                減点効果を他の参加者に移譲できます。<br>
                 {% if transfer_unit_is_fractional %}入力欄で「1」と入力すると {{ transfer_unit_display }} 単位の移譲になります。{% endif %}<br>
+                移譲量の合計は最大 {{ max_transfer_display }} です。<br>
                 {% if is_costly %}1単位あたり {{ cost_per_unit_display }} {{ cost_per_unit_label }} のコストが発生します。{% else %}移譲コストはありません。{% endif %}
             </div>
         </div>
@@ -66,7 +67,7 @@
                                        class="ui-input js-transfer-input decision-number js-slider-input"
                                        min="0"
                                        step="{{ transfer_unit }}"
-                                       value=""
+                                       value="{{ member.initial_transfer_value }}"
                                        placeholder="0.0"
                                        data-target="{{ member.id_in_group }}"
                                        data-target-label="プレイヤー {{ member.id_in_group }}">
@@ -333,11 +334,30 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         barsById[id] = { el: bar, base: base };
     });
+    var gainFillColor = 'rgba(120, 160, 220, 1)';
+    var reclaimFillColor = gainFillColor;
 
     function clampToUnit(value) {
         var scaled = Math.round(value / transferUnit) * transferUnit;
         return Math.max(0, parseFloat(scaled.toFixed(decimals + 1)));
     }
+
+    var baselineTransfers = {};
+    var baselineTotal = 0;
+    inputs.forEach(function (input) {
+        var targetId = input.dataset.target || '';
+        if (!targetId) {
+            return;
+        }
+        var rawBaseline = parseFloat((input.value || '').trim());
+        if (!Number.isFinite(rawBaseline) || rawBaseline < 0) {
+            rawBaseline = 0;
+        }
+        var normalizedBaseline = clampToUnit(rawBaseline);
+        baselineTransfers[targetId] = normalizedBaseline;
+        baselineTotal += normalizedBaseline;
+    });
+    baselineTotal = parseFloat(baselineTotal.toFixed(decimals + 1));
 
     function setBarValue(barEl, value) {
         if (!barEl) {
@@ -359,16 +379,33 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (fillEl) {
             if (isSelfBar) {
-                var deltaPower = Math.max(0, basePower - value);
-                var deltaPct = Math.max(0, Math.min(100, (deltaPower / powerMax) * 100));
-                var coverBottomPct = Math.max(0, basePct - deltaPct);
-                fillEl.style.height = deltaPct.toFixed(2) + '%';
-                fillEl.style.bottom = coverBottomPct.toFixed(2) + '%';
+                var selfDelta = value - basePower;
+                fillEl.style.background = gainFillColor;
+                if (selfDelta >= 0) {
+                    var gainPctSelf = Math.max(0, Math.min(100, (selfDelta / powerMax) * 100));
+                    fillEl.style.height = gainPctSelf.toFixed(2) + '%';
+                    fillEl.style.bottom = basePct.toFixed(2) + '%';
+                } else {
+                    var lossPctSelf = Math.max(0, Math.min(100, ((-selfDelta) / powerMax) * 100));
+                    var coverBottomPct = Math.max(0, basePct - lossPctSelf);
+                    fillEl.style.height = lossPctSelf.toFixed(2) + '%';
+                    fillEl.style.bottom = coverBottomPct.toFixed(2) + '%';
+                }
             } else {
-                var gainPower = Math.max(0, value - basePower);
-                var gainPct = Math.max(0, Math.min(100, (gainPower / powerMax) * 100));
-                fillEl.style.height = gainPct.toFixed(2) + '%';
-                fillEl.style.bottom = basePct.toFixed(2) + '%';
+                var delta = value - basePower;
+                if (delta >= 0) {
+                    var gainPower = delta;
+                    var gainPct = Math.max(0, Math.min(100, (gainPower / powerMax) * 100));
+                    fillEl.style.background = gainFillColor;
+                    fillEl.style.height = gainPct.toFixed(2) + '%';
+                    fillEl.style.bottom = basePct.toFixed(2) + '%';
+                } else {
+                    var reclaimPower = -delta;
+                    var reclaimPct = Math.max(0, Math.min(100, (reclaimPower / powerMax) * 100));
+                    fillEl.style.background = reclaimFillColor;
+                    fillEl.style.height = reclaimPct.toFixed(2) + '%';
+                    fillEl.style.bottom = pct.toFixed(2) + '%';
+                }
             }
         }
         if (valueEl) {
@@ -406,11 +443,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 transferById[targetId] = normalized;
                 var linkedSlider = document.querySelector('.power-slider[data-target="' + targetId + '"]');
                 if (linkedSlider) {
+                    var baselineTransfer = baselineTransfers[targetId] || 0;
                     var basePower = (barsById[targetId] && barsById[targetId].base) ? barsById[targetId].base : 0;
-                    var cappedValue = Math.min(basePower + normalized, Math.min(basePower + maxTransfer, powerMax));
+                    var minAllowed = Math.max(0, basePower - baselineTransfer);
+                    var maxAllowed = Math.min(powerMax, basePower + (maxTransfer - baselineTransfer));
+                    var projectedValue = basePower + (normalized - baselineTransfer);
+                    var cappedValue = Math.max(minAllowed, Math.min(maxAllowed, projectedValue));
                     linkedSlider.min = 0;
                     linkedSlider.max = powerMax;
-                    linkedSlider.value = Math.max(basePower, cappedValue);
+                    linkedSlider.value = cappedValue;
                     if (window.updateSliderFill) {
                         window.updateSliderFill(linkedSlider);
                     }
@@ -426,7 +467,7 @@ document.addEventListener('DOMContentLoaded', function () {
             totalOutEl.textContent = totalOut.toFixed(displayDecimals);
         }
 
-        var remaining = currentPower - totalOut;
+        var remaining = currentPower - (totalOut - baselineTotal);
         if (previewPowerEl) {
             previewPowerEl.textContent = remaining.toFixed(displayDecimals);
         }
@@ -440,8 +481,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             var base = barInfo.base || 0;
+            var baselineTransfer = baselineTransfers[id] || 0;
             var delta = transferById[id] || 0;
-            var nextValue = base + delta;
+            var nextValue = base + (delta - baselineTransfer);
             setBarValue(barInfo.el, nextValue);
         });
 
@@ -459,7 +501,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (errorEl) {
             if (exceeds) {
-                errorEl.textContent = '譲渡量の合計が保有する罰威力 (' + currentPower.toFixed(displayDecimals) + ') を超えています。値を修正してください。';
+                errorEl.textContent = '譲渡量の合計が上限 (' + maxTransfer.toFixed(displayDecimals) + ') を超えています。値を修正してください。';
                 errorEl.style.display = 'block';
             } else {
                 errorEl.style.display = 'none';
@@ -476,6 +518,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
     inputs.forEach(function (input) {
         input.setAttribute('max', maxTransfer.toString());
+        input.addEventListener('keydown', function (event) {
+            if (!(transferUnit < 1)) {
+                return;
+            }
+            if (event.ctrlKey || event.metaKey || event.altKey) {
+                return;
+            }
+            if (!/^[0-9]$/.test(event.key)) {
+                return;
+            }
+
+            var currentText = (input.value || '').trim();
+            var isNormalizedFraction = /^0\.\d+$/.test(currentText);
+
+            // When the field already contains normalized text like "0.1",
+            // typing a digit should replace it (so "2" -> "0.2"), not append.
+            if (isNormalizedFraction) {
+                event.preventDefault();
+                input.value = event.key;
+                updateTotals(false);
+            }
+        });
+        input.addEventListener('focus', function () {
+            // Prefilled defaults should be easy to overwrite with one keystroke.
+            // Selecting all on focus ensures typing "1" replaces "0.5" -> "1",
+            // then the existing normalization logic converts it to "0.1".
+            setTimeout(function () {
+                if (typeof input.select === 'function') {
+                    input.select();
+                }
+            }, 0);
+        });
         input.addEventListener('input', function () { updateTotals(false); });
         input.addEventListener('change', function () { updateTotals(true); });
         input.addEventListener('blur', function () { updateTotals(true); });
@@ -486,6 +560,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (targetId) {
             slider.dataset.target = targetId;
         }
+        var baselineTransfer = baselineTransfers[targetId] || 0;
         var basePower = (barsById[targetId] && barsById[targetId].base) ? barsById[targetId].base : 0;
         slider.min = 0;
         slider.max = powerMax;
@@ -495,13 +570,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         slider.addEventListener('input', function () {
             var rawValue = parseFloat(slider.value || basePower);
-            var maxAllowed = Math.min(basePower + maxTransfer, powerMax);
-            var clampedValue = Math.min(Math.max(rawValue, basePower), maxAllowed);
+            var minAllowed = Math.max(0, basePower - baselineTransfer);
+            var maxAllowed = Math.min(powerMax, basePower + (maxTransfer - baselineTransfer));
+            var clampedValue = Math.min(Math.max(rawValue, minAllowed), maxAllowed);
             slider.value = clampedValue;
             if (window.updateSliderFill) {
                 window.updateSliderFill(slider);
             }
-            var transferValue = clampToUnit(clampedValue - basePower);
+            var transferValue = clampToUnit(baselineTransfer + (clampedValue - basePower));
             var linkedInput = document.querySelector('#transfer-input-' + targetId);
             if (linkedInput) {
                 linkedInput.value = transferValue.toFixed(displayDecimals);

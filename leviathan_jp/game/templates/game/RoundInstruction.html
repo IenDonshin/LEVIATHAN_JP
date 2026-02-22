@@ -1,0 +1,86 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    説明
+{% endblock %}
+
+{% block content %}
+<div class="stage-layout">
+    <div class="stage-header">
+        <div>
+            <div class="stage-title">ラウンド開始前の説明</div>
+            <div class="stage-subtitle">第 {{ player.round_number }} ラウンド</div>
+        </div>
+        <div class="stage-desc round-instruction-desc">
+            {% if intro_stage == "round1" %}
+                <span class="desc-line">このラウンドでは、グループ・プロジェクトへの投資ルールを確認します。</span>
+            {% elif intro_stage == "round2" %}
+                <span class="desc-line">このラウンドから「減点」が導入されます。</span>
+            {% elif intro_stage == "round3" %}
+                <span class="desc-line">このラウンドの追加ルールを確認してください。</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="stage-center">
+        <div class="stage-stack" style="width: 100%;">
+            {% if intro_stage == "round1" %}
+                <h5>ルール: グループ・プロジェクトへの投資</h5>
+                <ol>
+                    <li>各ラウンドの開始時に、あなたは初期保有額として {{ endowment }} MU を受け取ります。{{ endowment }} MUのうち、いくらをグループ・プロジェクトに投資するかを決定します。</li>
+                    <li>全員の投資合計は {{ contribution_multiplier }} 倍に増やされ、投資額に関係なくグループ全員に均等配分されます。</li>
+                    <li>結果画面では、各メンバーの投資額が表示されます。メンバーIDは実験終了まで固定です。</li>
+                </ol>
+            {% elif intro_stage == "round2" %}
+                <h5>追加ルール: 減点</h5>
+                <ol>
+                    <li>全員の投資後、他メンバーの投資額を見て、あなたは他者に減点を割り当てられます（割り当てなくても構いません）。</li>
+                    <li>他者に1ポイント与えるごとに、あなた自身の手持ちMUが1減ります。</li>
+                    <li>1ポイント与えられた相手は、手持ちMUが1減ります。</li>
+                </ol>
+            {% elif intro_stage == "round3" %}
+                {% if power_transfer_allowed %}
+                    <h5>追加ルール: 減点効果の移譲</h5>
+                    <p>このラウンドから、ゲームの流れは「①投資フェーズ → ②減点効果移譲フェーズ → ③減点フェーズ」です。</p>
+                    <ol>
+                        <li>減点効果は、あなたが減点を与えたときの相手へのダメージ倍率です。減点効果が1.0なら、1ポイントの減点で相手に1 MUのダメージを与えます。</li>
+                        <li>減点効果移譲フェーズでは、自分の減点効果を減らして他メンバーへ移譲できます。受け取った側の減点効果は増加し、あなたの減点効果は減少します。</li>
+                        {% if costly_punishment_transfer %}
+                            <li>移譲にはコストが発生します。減点効果0.1の移譲あたり1 MUのコストを支払います。</li>
+                        {% else %}
+                            <li>移譲にコストはかかりません。</li>
+                        {% endif %}
+                        <li>減点効果が2.0なら3ポイントで相手に6 MUのダメージ、減点効果が0.0なら3ポイント与えても相手へのダメージは0です（ただし自分のコストは発生）。</li>
+                    </ol>
+                {% else %}
+                    <h5>この後について（固定条件）</h5>
+                    <p>この後も、①投資フェーズ → ②減点フェーズ、の流れを繰り返します。</p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="stage-footer">
+        <div class="action-row">
+            {% next_button %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block internal_scripts %}
+    {{ super() }}
+    <style>
+        .round-instruction-desc .desc-line {
+            display: block;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 980px) {
+            .round-instruction-desc .desc-line {
+                white-space: normal;
+            }
+        }
+    </style>
+{% endblock %}

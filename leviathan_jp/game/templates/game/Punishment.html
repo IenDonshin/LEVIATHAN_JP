@@ -2,7 +2,7 @@
 {% load otree static %}
 
 {% block title %}
-    罰ステージ
+    減点フェーズ
 {% endblock %}
 
 {% block content %}
@@ -10,11 +10,11 @@
 <div class="stage-layout punishment-stage-layout">
     <div class="stage-header">
         <div>
-            <div class="stage-title">罰ステージ</div>
+            <div class="stage-title">減点フェーズ</div>
             <div class="stage-subtitle">第 {{ player.round_number }} ラウンド</div>
         </div>
         <div class="stage-desc">
-            DPを他の参加者に割り当てます。<br>
+            減点を他の参加者に割り当てます。<br>
             各プレイヤーへの配分は 0 から {{ per_target_dp_limit }} の範囲です。
         </div>
     </div>
@@ -53,7 +53,7 @@
                             {% endfor %}
                         </tr>
                         <tr>
-                            <th class="matrix-note">貢献MUs</th>
+                            <th class="matrix-note">投資MU</th>
                             {% for col in players_data %}
                                 <th>
                                     <div class="bar-track bar-track--compact bar-track--blue"
@@ -66,7 +66,7 @@
                             {% endfor %}
                         </tr>
                         <tr>
-                            <th class="matrix-note">DPコスト</th>
+                            <th class="matrix-note">減点コスト</th>
                             {% for col in players_data %}
                                 <th>
                                     {% if col.is_self %}
@@ -227,7 +227,7 @@
                 input.setCustomValidity('');
                 return true;
             }
-            input.setCustomValidity('DPは0〜' + maxPerTarget + 'の整数で入力してください。');
+            input.setCustomValidity('減点は0〜' + maxPerTarget + 'の整数で入力してください。');
             if (showMessage && typeof input.reportValidity === 'function') {
                 input.reportValidity();
             }
@@ -341,7 +341,7 @@
             if (budgetExceeded) {
                 const firstInput = inputs[0];
                 if (firstInput) {
-                    firstInput.setCustomValidity('DPの総コストが残りMUsを超えています。');
+                    firstInput.setCustomValidity('減点の総コストが残りMUを超えています。');
                     if (showMessage && typeof firstInput.reportValidity === 'function') {
                         firstInput.reportValidity();
                     }
@@ -349,7 +349,7 @@
                 allValid = false;
             } else {
                 const firstInput = inputs[0];
-                if (firstInput && firstInput.validationMessage === 'DPの総コストが残りMUsを超えています。') {
+                if (firstInput && firstInput.validationMessage === '減点の総コストが残りMUを超えています。') {
                     firstInput.setCustomValidity('');
                 }
             }

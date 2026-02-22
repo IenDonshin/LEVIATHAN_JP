@@ -10,7 +10,7 @@ from otree.api import (
 )
 
 doc = """
-Public Goods Game with Punishment (Fixed)
+Public goods game with deduction and deduction-effect transfer.
 """
 
 class Constants(BaseConstants):
@@ -64,7 +64,7 @@ class Group(BaseGroup):
     individual_share = models.CurrencyField()
 
     def set_group_contribution(self):
-        """グループの総貢献額と各自の取り分を計算"""
+        """グループの総投資額と各自の取り分を計算"""
         players = self.get_players()
         contributions = [p.contribution or 0 for p in players]
         self.total_contribution = sum(contributions)
@@ -74,7 +74,7 @@ class Group(BaseGroup):
         self.individual_share = c(share_value)
 
     def set_payoff(self):
-        """懲罰フェーズ終了後に各プレイヤーの利得を確定"""
+        """減点フェーズ終了後に各プレイヤーの利得を確定"""
         self.adjust_punishments()
         for player in self.get_players():
             player.set_payoff()
@@ -129,6 +129,113 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
+    # Round 1: public goods introduction quiz
+    intro1_q1 = models.IntegerField(
+        label="第1問：あなたが20 MUのうち10 MUを投資した場合、分配前に手元に残るMUはいくらですか？",
+        choices=[
+            [1, "0 MU"],
+            [2, "10 MU"],
+            [3, "20 MU"],
+        ],
+        widget=widgets.RadioSelect,
+    )
+    intro1_q2 = models.IntegerField(
+        label="第2問：5人グループで投資合計40 MUの場合、1.5倍後に1人あたり受け取るMUはいくらですか？",
+        choices=[
+            [1, "8 MU"],
+            [2, "12 MU"],
+            [3, "15 MU"],
+        ],
+        widget=widgets.RadioSelect,
+    )
+    intro1_q3 = models.IntegerField(
+        label="第3問：あなたが10 MUを残し、グループ・プロジェクトから12 MUを受け取る場合、最終収益はいくらですか？",
+        choices=[
+            [1, "10 MU"],
+            [2, "12 MU"],
+            [3, "22 MU"],
+        ],
+        widget=widgets.RadioSelect,
+    )
+    intro1_q4 = models.IntegerField(
+        label="第4問：他のグループメンバーの識別について正しいものはどれですか？",
+        choices=[
+            [1, "毎ラウンド異なるランダムなIDで表示される。"],
+            [2, "誰がどの決定をしたかは一切表示されない。"],
+            [3, "毎ラウンド同じIDで表示される。"],
+        ],
+        widget=widgets.RadioSelect,
+    )
+
+    # Round 2: deduction introduction quiz
+    intro2_q1 = models.IntegerField(
+        label="第1問：あなたが他者に2ポイントの減点を与えると、あなた自身のMUはどうなりますか？",
+        choices=[
+            [1, "自分のMUは変わらない。"],
+            [2, "自分のMUが1減る。"],
+            [3, "自分のMUが2減る。"],
+        ],
+        widget=widgets.RadioSelect,
+    )
+    intro2_q2 = models.IntegerField(
+        label="第2問：あなたが他者に2ポイントの減点を与えると、相手のMUはどうなりますか？",
+        choices=[
+            [1, "相手のMUは変わらない。"],
+            [2, "相手のMUが1減る。"],
+            [3, "相手のMUが2減る。"],
+        ],
+        widget=widgets.RadioSelect,
+    )
+    intro2_q3 = models.IntegerField(
+        label="第3問：他者があなたに4ポイントの減点を与えると、あなたのMUはどうなりますか？",
+        choices=[
+            [1, "自分のMUは変わらない。"],
+            [2, "自分のMUが2減る。"],
+            [3, "自分のMUが4減る。"],
+        ],
+        widget=widgets.RadioSelect,
+    )
+
+    # Round 3: power-transfer introduction quiz (transfer treatments)
+    intro3_transfer_q1 = models.IntegerField(
+        label="第1問：あなたが減点効果0.2を移譲するとき、コストはいくらですか？",
+        choices=[
+            [1, "0 MU（コストはかからない）"],
+            [2, "1.0 MU"],
+            [3, "2.0 MU"],
+        ],
+        widget=widgets.RadioSelect,
+    )
+    intro3_transfer_q2 = models.IntegerField(
+        label="第2問：あなたの減点効果が0.0のとき、3ポイントの減点を与えた結果はどうなりますか？",
+        choices=[
+            [1, "自分のMUは減らず、相手のMUが3減る。"],
+            [2, "自分のMUは3減るが、相手のMUは減らない。"],
+            [3, "自分のMUは3減り、相手のMUも3減る。"],
+        ],
+        widget=widgets.RadioSelect,
+    )
+    intro3_transfer_q3 = models.IntegerField(
+        label="第3問：あなたの減点効果が2.0のとき、3ポイントの減点を与えた結果はどうなりますか？",
+        choices=[
+            [1, "自分のMUは6減り、相手のMUも6減る。"],
+            [2, "自分のMUは3減り、相手のMUは6減る。"],
+            [3, "自分のMUは3減り、相手のMUも3減る。"],
+        ],
+        widget=widgets.RadioSelect,
+    )
+
+    # Round 3: fixed treatment confirmation quiz
+    intro3_fixed_q1 = models.IntegerField(
+        label="第1問：固定条件でこの後の流れとして正しいものはどれですか？",
+        choices=[
+            [1, "「投資フェーズ → 減点フェーズ」を繰り返す。"],
+            [2, "「投資フェーズ → 減点効果移譲フェーズ → 減点フェーズ」を繰り返す。"],
+            [3, "次ラウンドから減点フェーズは行われない。"],
+        ],
+        widget=widgets.RadioSelect,
+    )
+
     contribution = models.CurrencyField(
         min=0,
         max=Constants.endowment,
@@ -140,18 +247,18 @@ class Player(BasePlayer):
             return self.available_endowment
         return self.session.config['endowment']
 
-    # 各プレイヤーに与えるDPを入力するフィールド
+    # 各プレイヤーに与える減点を入力するフィールド
     # グループは最大5人を想定し、id_in_group は 1〜5
-    punish_p1 = models.IntegerField(min=0, initial=0, label="プレイヤー1へのDP")
-    punish_p2 = models.IntegerField(min=0, initial=0, label="プレイヤー2へのDP")
-    punish_p3 = models.IntegerField(min=0, initial=0, label="プレイヤー3へのDP")
-    punish_p4 = models.IntegerField(min=0, initial=0, label="プレイヤー4へのDP")
-    punish_p5 = models.IntegerField(min=0, initial=0, label="プレイヤー5へのDP")
+    punish_p1 = models.IntegerField(min=0, initial=0, label="プレイヤー1への減点")
+    punish_p2 = models.IntegerField(min=0, initial=0, label="プレイヤー2への減点")
+    punish_p3 = models.IntegerField(min=0, initial=0, label="プレイヤー3への減点")
+    punish_p4 = models.IntegerField(min=0, initial=0, label="プレイヤー4への減点")
+    punish_p5 = models.IntegerField(min=0, initial=0, label="プレイヤー5への減点")
 
-    punishment_given = models.CurrencyField(doc="与えた罰の総コスト")
-    punishment_received = models.CurrencyField(doc="受けた罰による総損失")
+    punishment_given = models.CurrencyField(doc="与えた減点の総コスト")
+    punishment_received = models.CurrencyField(doc="受けた減点による総損失")
 
-    # 罰威力の移譲に関するフィールド
+    # 減点効果の移譲に関するフィールド
     power_transfer_p1 = models.FloatField(min=0, initial=0, blank=True)
     power_transfer_p2 = models.FloatField(min=0, initial=0, blank=True)
     power_transfer_p3 = models.FloatField(min=0, initial=0, blank=True)
@@ -175,8 +282,8 @@ class Player(BasePlayer):
 
     def set_payoff(self):
         """今ラウンドの最終利得を計算"""
-        # 懲罰に関する計算
-        # 1. 自分が与えた罰点とコストを集計
+        # 減点に関する計算
+        # 1. 自分が与えた減点とコストを集計
         punishment_points_given = self.punishment_points_given_actual
         if punishment_points_given in (None, 0):
             punishment_points_given = 0
@@ -187,7 +294,7 @@ class Player(BasePlayer):
             self.punishment_points_given_actual = punishment_points_given
             self.punishment_given = c(punishment_points_given * self.session.config['punishment_cost'])
 
-        # 2. 自分が受けた罰点と損失を集計
+        # 2. 自分が受けた減点と損失を集計
         punishment_points_received = self.punishment_points_received_actual
         if punishment_points_received in (None, 0):
             punishment_points_received = 0

@@ -22,8 +22,38 @@ def power_transfer_form(player, amount):
     return data
 
 
+def intro_quiz_form(player):
+    round_number = player.round_number
+    if round_number == 1:
+        return dict(
+            intro1_q1=2,
+            intro1_q2=2,
+            intro1_q3=3,
+            intro1_q4=3,
+        )
+    if round_number == 2:
+        return dict(
+            intro2_q1=3,
+            intro2_q2=3,
+            intro2_q3=3,
+        )
+    if round_number == 3:
+        if player.session.config.get('power_transfer_allowed'):
+            q1_answer = 3 if player.session.config.get('costly_punishment_transfer') else 1
+            return dict(
+                intro3_transfer_q1=q1_answer,
+                intro3_transfer_q2=2,
+                intro3_transfer_q3=2,
+            )
+        return dict(intro3_fixed_q1=1)
+    return {}
+
+
 class PlayerBot(Bot):
     def play_round(self):
+        if self.session.config.get('use_browser_bots') and self.player.round_number > 2:
+            return
+
         treatment = self.session.config.get('treatment_name', 'fixed')
 
         bot_rules = {
@@ -33,6 +63,15 @@ class PlayerBot(Bot):
         }
 
         rules = bot_rules.get(treatment, bot_rules['fixed'])
+
+        if pages.RoundInstruction.is_displayed(self.player):
+            yield pages.RoundInstruction
+        if pages.RoundQuiz.is_displayed(self.player):
+            yield Submission(
+                pages.RoundQuiz,
+                intro_quiz_form(self.player),
+                check_html=False,
+            )
 
         power_transfer_allowed = self.session.config.get('power_transfer_allowed')
         if power_transfer_allowed and self.player.round_number >= 3:

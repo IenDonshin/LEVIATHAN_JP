@@ -14,7 +14,7 @@
             <div class="stage-subtitle">第 {{ player.round_number }} ラウンド</div>
         </div>
         <div class="stage-desc round-result-desc">
-            <span class="desc-line">各プレイヤーの貢献MUs・DPコスト・罰の割当結果を確認してください。</span>
+            <span class="desc-line">各プレイヤーの投資MU・減点コスト・減点の割当結果を確認してください。</span>
             <span class="desc-line">あなたの累積利得は {{ cumulative_payoff }} です。</span>
         </div>
     </div>
@@ -53,7 +53,7 @@
                                 {% endfor %}
                             </tr>
                             <tr>
-                                <th class="matrix-note">貢献MUs</th>
+                                <th class="matrix-note">投資MU</th>
                                 {% for summary in players_summary %}
                                     <th>
                                         <div class="bar-track bar-track--compact bar-track--blue"
@@ -66,7 +66,7 @@
                                 {% endfor %}
                             </tr>
                             <tr>
-                                <th class="matrix-note">DPコスト</th>
+                                <th class="matrix-note">減点コスト</th>
                                 {% for summary in players_summary %}
                                     <th>
                                         <div class="dp-cost-box dp-cost-box--fill">

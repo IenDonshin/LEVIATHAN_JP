@@ -23,6 +23,24 @@ def _currency_labels():
     return label, label
 
 
+def _previous_transfer_total(player):
+    """Sum this player's outgoing transfer decisions from the previous round."""
+    if player.round_number < 4:
+        return 0.0
+    prev_player = player.in_round(player.round_number - 1)
+    total = 0.0
+    for i in range(1, Constants.players_per_group + 1):
+        if i == player.id_in_group:
+            continue
+        field_name = f"power_transfer_p{i}"
+        value = getattr(prev_player, field_name, 0)
+        try:
+            total += max(0.0, float(value or 0))
+        except (TypeError, ValueError):
+            continue
+    return total
+
+
 def build_history_rounds(player):
     """Collect per-round history data for templates."""
     session = player.session
@@ -221,6 +239,7 @@ def build_history_rounds(player):
 class BasePage(Page):
     @staticmethod
     def js_vars(player):
+        _force_manual_after_bot_stop_round(player)
         return dict(
             dropout_warning_active=bool(
                 player.participant.vars.get('dropout_warning_active')
@@ -235,6 +254,151 @@ class BasePage(Page):
             player.participant.vars['dropout_warning_active'] = False
             player.participant.vars['auto_play'] = False
             player.participant.vars['consecutive_timeouts'] = 0
+
+
+def _force_manual_after_bot_stop_round(player):
+    """
+    Hard-stop browser-bot mode once we are past the configured stop round.
+    This prevents bot-only submission handling from leaking into manual rounds.
+    """
+    if not player.session.config.get("use_browser_bots"):
+        return False
+    stop_round = player.session.config.get("browser_bot_stop_round")
+    # Safety override: round 3 introduces instruction/quiz branching that should
+    # always be manual in this project workflow. Even if stop_round is configured
+    # higher, force browser bots to stop no later than round 2.
+    if stop_round is None:
+        stop_round = 2
+    else:
+        try:
+            stop_round = int(stop_round)
+        except (TypeError, ValueError):
+            stop_round = 2
+        stop_round = min(stop_round, 2)
+    if not stop_round:
+        return False
+    if player.round_number <= stop_round:
+        return False
+    if not (player.participant.is_browser_bot or player.participant._is_bot):
+        return False
+
+    player.participant.is_browser_bot = False
+    player.participant._is_bot = False
+    player.participant.vars['auto_play'] = False
+    player.participant.vars['consecutive_timeouts'] = 0
+    player.participant.vars['dropout_warning_active'] = False
+    return True
+
+
+def _intro_stage(player):
+    if player.round_number == 1:
+        return "round1"
+    if player.round_number == 2:
+        return "round2"
+    if player.round_number == 3:
+        return "round3"
+    return None
+
+
+def _skip_intro_for_browser_bot(player):
+    # Browser-bot jump sessions should fast-forward rounds without stopping on
+    # instruction/quiz pages.
+    _force_manual_after_bot_stop_round(player)
+    if not player.session.config.get("use_browser_bots"):
+        return False
+    if not player.participant.is_browser_bot:
+        return False
+
+    return True
+
+
+class RoundInstruction(BasePage):
+    @staticmethod
+    def is_displayed(player):
+        return _intro_stage(player) is not None and not _skip_intro_for_browser_bot(player)
+
+    @staticmethod
+    def vars_for_template(player):
+        session = player.session
+        stage = _intro_stage(player)
+        return dict(
+            intro_stage=stage,
+            treatment_name=session.config.get("treatment_name", "fixed"),
+            power_transfer_allowed=bool(session.config.get("power_transfer_allowed")),
+            costly_punishment_transfer=bool(session.config.get("costly_punishment_transfer")),
+            contribution_multiplier=session.config.get(
+                "contribution_multiplier", Constants.multiplier
+            ),
+            players_per_group=Constants.players_per_group,
+            endowment=session.config.get("endowment", Constants.endowment),
+        )
+
+
+class RoundQuiz(BasePage):
+    form_model = "player"
+
+    @staticmethod
+    def is_displayed(player):
+        _force_manual_after_bot_stop_round(player)
+        return _intro_stage(player) is not None and not _skip_intro_for_browser_bot(player)
+
+    @staticmethod
+    def get_form_fields(player):
+        _force_manual_after_bot_stop_round(player)
+        stage = _intro_stage(player)
+        if stage == "round1":
+            return ["intro1_q1", "intro1_q2", "intro1_q3", "intro1_q4"]
+        if stage == "round2":
+            return ["intro2_q1", "intro2_q2", "intro2_q3"]
+        if stage == "round3":
+            if player.session.config.get("power_transfer_allowed"):
+                return ["intro3_transfer_q1", "intro3_transfer_q2", "intro3_transfer_q3"]
+            return ["intro3_fixed_q1"]
+        return []
+
+    @staticmethod
+    def vars_for_template(player):
+        _force_manual_after_bot_stop_round(player)
+        session = player.session
+        return dict(
+            intro_stage=_intro_stage(player),
+            treatment_name=session.config.get("treatment_name", "fixed"),
+            power_transfer_allowed=bool(session.config.get("power_transfer_allowed")),
+            costly_punishment_transfer=bool(session.config.get("costly_punishment_transfer")),
+        )
+
+    @staticmethod
+    def error_message(player, values):
+        _force_manual_after_bot_stop_round(player)
+        stage = _intro_stage(player)
+        if stage == "round1":
+            expected = dict(intro1_q1=2, intro1_q2=2, intro1_q3=3, intro1_q4=3)
+            if any(values.get(k) != v for k, v in expected.items()):
+                return "第1ラウンド前クイズの解答が正しくありません。説明を確認して再回答してください。"
+            return None
+
+        if stage == "round2":
+            expected = dict(intro2_q1=3, intro2_q2=3, intro2_q3=3)
+            if any(values.get(k) != v for k, v in expected.items()):
+                return "第2ラウンド前クイズの解答が正しくありません。説明を確認して再回答してください。"
+            return None
+
+        if stage == "round3":
+            if player.session.config.get("power_transfer_allowed"):
+                expected_q1 = 3 if player.session.config.get("costly_punishment_transfer") else 1
+                expected = dict(
+                    intro3_transfer_q1=expected_q1,
+                    intro3_transfer_q2=2,
+                    intro3_transfer_q3=2,
+                )
+                if any(values.get(k) != v for k, v in expected.items()):
+                    return "第3ラウンド前クイズの解答が正しくありません。説明を確認して再回答してください。"
+                return None
+            if values.get("intro3_fixed_q1") != 1:
+                return "第3ラウンド前クイズの解答が正しくありません。説明を確認して再回答してください。"
+            return None
+
+        return None
 
 # =============================================================================
 # CLASS: Contribution
@@ -285,11 +449,6 @@ class Contribution(BasePage):
             if player.available_endowment is not None
             else player.session.config.get('endowment', Constants.endowment)
         )
-        initial_contribution = 0
-        if player.round_number > 1:
-            prev_contribution = player.in_round(player.round_number - 1).contribution
-            prev_value = float(prev_contribution or 0)
-            initial_contribution = int(max(0, prev_value))
         return dict(
             history=player.in_previous_rounds(),
             id_range=id_range,
@@ -298,7 +457,7 @@ class Contribution(BasePage):
             available_endowment=player.available_endowment,
             available_endowment_display=_int_display(available),
             contribution_limit_display=_int_display(available),
-            initial_contribution=initial_contribution,
+            initial_contribution=0,
             show_power_info=True,
             timeout_seconds=Contribution.get_timeout_seconds(player),
             history_allow_vertical_scroll=history_allow_vertical_scroll,
@@ -308,15 +467,15 @@ class Contribution(BasePage):
     def error_message(player, values):
         contribution = values.get('contribution')
         if contribution is None:
-            return '貢献額を入力してください。'
+            return '投資額を入力してください。'
         endowment = player.session.config.get('endowment', Constants.endowment)
         amount = float(contribution)
         available = float(player.available_endowment or endowment)
         if amount < 0 or amount > available:
             limit = int(available)
-            return f'貢献額は0から{limit}までの範囲で入力してください。'
+            return f'投資額は0から{limit}までの範囲で入力してください。'
         if not amount.is_integer():
-            return '貢献額は整数で入力してください。'
+            return '投資額は整数で入力してください。'
         return None
 
     @staticmethod
@@ -350,6 +509,7 @@ class ContributionWaitPage(WaitPage):
 
     @staticmethod
     def vars_for_template(player):
+        _force_manual_after_bot_stop_round(player)
         players = player.group.get_players()
         current_round = player.round_number
         submitted = sum(
@@ -463,6 +623,22 @@ class PowerTransfer(BasePage):
         session = player.session
         transfer_unit = session.config.get("punishment_transfer_unit", 0.1)
         cost_per_unit = session.config.get("power_transfer_cost_rate", 0)
+        previous_transfer_values = {}
+        # The power-transfer phase starts at round 3, so its second appearance
+        # is round 4. From round 4 onward, prefill with last round's decisions.
+        if player.round_number >= 4:
+            prev_player = player.in_round(player.round_number - 1)
+            for i in range(1, Constants.players_per_group + 1):
+                if i == player.id_in_group:
+                    continue
+                field_name = f"power_transfer_p{i}"
+                prev_value = getattr(prev_player, field_name, 0)
+                try:
+                    normalized_value = max(0.0, float(prev_value or 0))
+                except (TypeError, ValueError):
+                    normalized_value = 0.0
+                previous_transfer_values[i] = normalized_value
+
         others_data = []
         for other in player.get_others_in_group():
             others_data.append(
@@ -490,10 +666,17 @@ class PowerTransfer(BasePage):
                     is_self=member.id_in_group == player.id_in_group,
                     power_before_value=power_value,
                     power_before_display=f"{power_value:.1f}",
+                    initial_transfer_value=previous_transfer_values.get(
+                        member.id_in_group, 0.0
+                    ),
                 )
             )
 
         is_costly = session.config.get("costly_punishment_transfer", False)
+        current_power_value = float(player.punishment_power_before or 0)
+        previous_out_total = _previous_transfer_total(player)
+        # Keep the paper's per-round cap (1.0), while preventing negative own power.
+        max_transfer_limit = max(0.0, min(1.0, current_power_value + previous_out_total))
         currency_label_singular, currency_label_plural = _currency_labels()
         cost_per_unit_value = float(cost_per_unit or 0)
         cost_per_unit_label = (
@@ -510,7 +693,8 @@ class PowerTransfer(BasePage):
             transfer_unit_is_fractional=float(transfer_unit or 0) < 1,
             others_data=others_data,
             members_data=members_data,
-            max_transfer=player.punishment_power_before,
+            max_transfer=max_transfer_limit,
+            max_transfer_display=f"{max_transfer_limit:.1f}",
             is_costly=is_costly,
             transfer_cost_rate=cost_per_unit,
             transfer_cost_per_unit=cost_per_unit,
@@ -528,6 +712,9 @@ class PowerTransfer(BasePage):
     def error_message(player, values):
         transfer_unit = player.session.config.get("punishment_transfer_unit", 0.1)
         tolerance = 1e-6
+        current_power_value = float(player.punishment_power_before or 0)
+        previous_out_total = _previous_transfer_total(player)
+        max_transfer_limit = max(0.0, min(1.0, current_power_value + previous_out_total))
         total = 0
         for value in values.values():
             if value is None:
@@ -540,21 +727,32 @@ class PowerTransfer(BasePage):
                 if abs(multiples - round(multiples)) > 1e-6:
                     return f"譲渡量は {transfer_unit} の倍数で入力してください。"
 
-        if total - player.punishment_power_before > tolerance:
-            return "譲渡量の合計が保有する罰威力を超えています。"
+        if total - max_transfer_limit > tolerance:
+            return f"譲渡量の合計は {max_transfer_limit:.1f} までです。"
 
     @staticmethod
     def before_next_page(player, timeout_happened):
         Contribution._update_timeout_streak(player, timeout_happened)
         session = player.session
+        transfer_unit = session.config.get("punishment_transfer_unit", 0.1)
         transfer_fields = [
             f"power_transfer_p{i}"
             for i in range(1, Constants.players_per_group + 1)
             if i != player.id_in_group
         ]
         if timeout_happened:
+            prev_player = player.in_round(player.round_number - 1) if player.round_number >= 4 else None
             for field in transfer_fields:
-                setattr(player, field, 0)
+                if prev_player is None:
+                    fallback_value = 0.0
+                else:
+                    try:
+                        fallback_value = max(0.0, float(getattr(prev_player, field, 0) or 0))
+                    except (TypeError, ValueError):
+                        fallback_value = 0.0
+                if transfer_unit > 0:
+                    fallback_value = round(fallback_value / transfer_unit) * transfer_unit
+                setattr(player, field, round(fallback_value, 3))
         total_out = 0
         for field in transfer_fields:
             value = player.field_maybe_none(field)
@@ -564,18 +762,19 @@ class PowerTransfer(BasePage):
             total_out += value
         player.power_transfer_out_total = round(total_out, 3)
 
-        unit = session.config.get("punishment_transfer_unit", 0.1)
         rate = session.config.get("power_transfer_cost_rate", 0)
-        if session.config.get("costly_punishment_transfer") and unit > 0:
-            units = total_out / unit
+        if session.config.get("costly_punishment_transfer") and transfer_unit > 0:
+            units = total_out / transfer_unit
             cost_value = units * rate
             player.power_transfer_cost = c(cost_value)
         else:
             player.power_transfer_cost = c(0)
 
+        # In each transfer phase, each participant can transfer up to 1 unit.
+        # Own retained transfer power before receiving others' transfers is 1 - out.
         player.punishment_power_after = max(
             0,
-            player.punishment_power_before - player.power_transfer_out_total,
+            round(1.0 - float(player.power_transfer_out_total or 0), 3),
         )
         player.participant.vars['power_transfer_submitted_round'] = player.round_number
 
@@ -602,7 +801,7 @@ class PowerTransferWait(WaitPage):
             player.punishment_power_after = max(
                 0,
                 round(
-                    player.punishment_power_before
+                    1.0
                     - player.power_transfer_out_total
                     + player.power_transfer_in_total,
                     3,
@@ -610,7 +809,7 @@ class PowerTransferWait(WaitPage):
             )
             player.participant.vars["punishment_power"] = player.punishment_power_after
 
-            # Carry over the updated punishment power to the next round so that
+            # Carry over the updated deduction effectiveness to the next round so that
             # the transfer results persist. creating_session runs before the
             # experiment starts, meaning the defaults written there (1.0) need
             # to be replaced once we know the actual outcome of this round.
@@ -627,6 +826,7 @@ class PowerTransferWait(WaitPage):
 
     @staticmethod
     def vars_for_template(player):
+        _force_manual_after_bot_stop_round(player)
         players = player.group.get_players()
         current_round = player.round_number
         submitted = sum(
@@ -829,11 +1029,11 @@ class Punishment(BasePage):
             if field_name in values and values[field_name] is not None:
                 value = values[field_name]
                 if value < 0:
-                    return "DPは0以上の整数で入力してください。"
+                    return "減点は0以上の整数で入力してください。"
                 if int(value) != value:
-                    return "DPは整数で入力してください。"
+                    return "減点は整数で入力してください。"
                 if value > per_target_limit:
-                    return f"各プレイヤーへのDPは {per_target_limit} 以内で入力してください。"
+                    return f"各プレイヤーへの減点は {per_target_limit} 以内で入力してください。"
                 total_punishment += value
         punishment_cost = player.session.config.get('punishment_cost', 1)
         total_cost = total_punishment * punishment_cost
@@ -846,7 +1046,7 @@ class Punishment(BasePage):
                 max_points = int((available + 1e-6) // punishment_cost)
             else:
                 max_points = total_punishment
-            return f"現在、使えるMUsは {max_points} です。もう一度試して下さい。"
+            return f"現在、使えるMUは {max_points} です。もう一度試して下さい。"
 
     @staticmethod
     def before_next_page(player, timeout_happened):
@@ -882,6 +1082,7 @@ class PunishmentWaitPage(WaitPage):
 
     @staticmethod
     def vars_for_template(player):
+        _force_manual_after_bot_stop_round(player)
         players = player.group.get_players()
         current_round = player.round_number
         submitted = sum(
@@ -1046,12 +1247,24 @@ class RoundResult(BasePage):
     def before_next_page(player, timeout_happened):
         Contribution._update_timeout_streak(player, timeout_happened)
         stop_round = player.session.config.get('browser_bot_stop_round')
+        if stop_round is None:
+            stop_round = 2
+        else:
+            try:
+                stop_round = int(stop_round)
+            except (TypeError, ValueError):
+                stop_round = 2
+            stop_round = min(stop_round, 2)
         if (
             stop_round
-            and player.round_number == stop_round
-            and player.participant.is_browser_bot
+            and player.round_number >= stop_round
+            and (player.participant.is_browser_bot or player.participant._is_bot)
         ):
             player.participant.is_browser_bot = False
+            player.participant._is_bot = False
+            player.participant.vars['auto_play'] = False
+            player.participant.vars['consecutive_timeouts'] = 0
+            player.participant.vars['dropout_warning_active'] = False
 
         session = player.session
         if session.vars.get('early_stop_round'):
