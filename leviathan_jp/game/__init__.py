@@ -11,6 +11,7 @@ from .pages import (
     ContributionResult,
     Punishment,
     PunishmentWaitPage,
+    PunishmentResult,
     RoundResult,
     FinalResult,
 )  # type: ignore
@@ -29,6 +30,7 @@ page_sequence = [
     ContributionResult,
     Punishment,
     PunishmentWaitPage,
+    PunishmentResult,
     RoundResult,
     FinalResult,
 ]

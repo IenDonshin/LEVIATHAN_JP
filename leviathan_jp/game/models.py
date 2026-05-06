@@ -88,6 +88,7 @@ class Group(BaseGroup):
 
         actual_cost = {p: 0.0 for p in players}
         actual_points_sent = {p: 0.0 for p in players}
+        actual_loss_received = {p: 0.0 for p in players}
 
         for victim in players:
             punish_entries = []
@@ -112,9 +113,7 @@ class Group(BaseGroup):
                 actual_points_sent[punisher] += points_used
                 actual_cost[punisher] += points_used * cost_per_point
 
-            available_before = float(victim.available_before_punishment or victim.available_endowment or 0)
-            victim_available = available_before - actual_loss
-            victim.available_endowment = c(victim_available)
+            actual_loss_received[victim] = actual_loss
             victim.punishment_points_received_actual = received_points
             victim.punishment_received = c(actual_loss)
 
@@ -123,7 +122,7 @@ class Group(BaseGroup):
             actual_cost_value = min(actual_cost[punisher], attempted_cost)
 
             available_before = float(punisher.available_before_punishment or punisher.available_endowment or 0)
-            new_available = available_before - actual_cost_value
+            new_available = available_before - actual_cost_value - actual_loss_received[punisher]
             punisher.available_endowment = c(new_available)
             punisher.punishment_given = c(actual_cost_value)
             punisher.punishment_points_given_actual = actual_points_sent[punisher]

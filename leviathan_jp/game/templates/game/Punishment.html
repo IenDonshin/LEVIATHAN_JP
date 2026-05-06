@@ -110,7 +110,7 @@
                                                data-target="{{ col.id_in_group }}">
                                         <span class="slider-thumb" data-thumb-for="{{ col.id_in_group }}"></span>
                                         <span class="slider-value" data-value-for="{{ col.id_in_group }}">0/{{ per_target_dp_limit }}</span>
-                                        <span class="slider-effect" data-effect-for="{{ col.id_in_group }}">【0】</span>
+                                        <span class="slider-effect" data-effect-for="{{ col.id_in_group }}">【0.0】</span>
                                     </td>
                                 {% else %}
                                     <td class="matrix-placeholder">?</td>
@@ -317,7 +317,7 @@
                 }
                 const value = parsePunishValue(inputEl);
                 if (!Number.isFinite(value) || value <= 0) {
-                    effectEl.textContent = '【0】';
+                    effectEl.textContent = '【0.0】';
                     return;
                 }
                 const loss = value * effectBase * powerText;

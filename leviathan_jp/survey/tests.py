@@ -42,6 +42,10 @@ def _participant_label(participant):
     return participant.label or f"BOT{participant.id_in_session:02d}"
 
 
+def _bot_progress_logs_enabled(session):
+    return not session.config.get("use_browser_bots")
+
+
 def _browser_bot_stop_stage(session):
     return session.config.get("browser_bot_stop_stage", "game")
 
@@ -69,6 +73,9 @@ def _expected_survey_pages(session):
 
 
 def _print_ready_survey_logs(player, log_state):
+    if not _bot_progress_logs_enabled(player.session):
+        return
+
     expected_pages = _expected_survey_pages(player.session)
     records = log_state["survey_page_records"]
     printed = log_state["survey_page_printed"]

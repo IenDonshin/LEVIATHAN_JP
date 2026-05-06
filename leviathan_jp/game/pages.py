@@ -596,13 +596,23 @@ class ContributionResult(BasePage):
             contribution_value = float(contribution or 0)
             available_before_value = float(available_before or 0)
             current_total_value = float(current_total or 0)
+            if available_before_value > 0:
+                contribution_fill_percent = max(
+                    0.0,
+                    min(100.0, (contribution_value / available_before_value) * 100.0),
+                )
+            else:
+                contribution_fill_percent = 0.0
 
             players_data.append(
                 dict(
                     player=member,
+                    id_in_group=member.id_in_group,
+                    is_self=member.id_in_group == player.id_in_group,
                     contribution=contribution,
                     contribution_value=contribution_value,
                     contribution_display=_int_display(contribution_value),
+                    contribution_fill_percent=f"{contribution_fill_percent:.2f}",
                     current_total=current_total,
                     current_total_display=f"{current_total_value:.1f}",
                     available_endowment=remaining,
@@ -625,6 +635,7 @@ class ContributionResult(BasePage):
 
         return dict(
             players_data=players_data,
+            players_count=len(players_data),
             endowment=endowment,
             share=share,
             project_outcome_value=project_outcome_value,
@@ -1122,9 +1133,9 @@ class PunishmentWaitPage(WaitPage):
         return dict(waiting_progress=submitted, waiting_total=total)
 
 # =============================================================================
-# CLASS: RoundResult
+# CLASS: PunishmentResult
 # =============================================================================
-class RoundResult(BasePage):
+class PunishmentResult(BasePage):
     @staticmethod
     def get_timeout_seconds(player):
         if not player.session.config.get('enable_timeout_autoplay', True):
@@ -1134,6 +1145,17 @@ class RoundResult(BasePage):
     @staticmethod
     def is_displayed(player):
         return player.round_number > 1
+
+    @staticmethod
+    def before_next_page(player, timeout_happened):
+        Contribution._update_timeout_streak(player, timeout_happened)
+        if (
+            player.session.config.get('use_browser_bots')
+            and player.session.config.get('browser_bot_stop_stage', 'game') == 'game'
+            and player.round_number >= _browser_bot_stop_round(player.session)
+            and _is_browser_bot_participant(player)
+        ):
+            _disable_browser_bot(player)
 
     @staticmethod
     def vars_for_template(player):
@@ -1148,10 +1170,6 @@ class RoundResult(BasePage):
         endowment_display = _int_display(endowment)
         per_target_dp_limit = session.config.get('per_target_dp_limit', session.config['deduction_points'])
         endowment_currency = c(endowment)
-        share = player.group.individual_share
-
-        cumulative_payoff = player.participant.vars.get('cumulative_payoff', c(0))
-        payoff_from_contribution = endowment_currency - player.contribution + share
 
         players = sorted(player.group.get_players(), key=lambda p: p.id_in_group)
         effectiveness_base = session.config.get('power_effectiveness', Constants.power_effectiveness)
@@ -1262,8 +1280,6 @@ class RoundResult(BasePage):
         round_result_allow_vertical_scroll = len(players) > 5 and (len(players) % 5 == 0)
 
         return dict(
-            payoff_from_contribution=payoff_from_contribution,
-            cumulative_payoff=cumulative_payoff,
             players_summary=players_summary,
             matrix_rows=matrix_rows,
             matrix_headers=matrix_headers,
@@ -1275,6 +1291,17 @@ class RoundResult(BasePage):
             endowment=endowment_currency,
             round_result_allow_vertical_scroll=round_result_allow_vertical_scroll,
         )
+
+
+# =============================================================================
+# CLASS: RoundResult
+# =============================================================================
+class RoundResult(BasePage):
+    @staticmethod
+    def get_timeout_seconds(player):
+        if not player.session.config.get('enable_timeout_autoplay', True):
+            return None
+        return player.session.config.get('non_decision_timeout_seconds', 10)
 
     @staticmethod
     def before_next_page(player, timeout_happened):
@@ -1307,6 +1334,56 @@ class RoundResult(BasePage):
                 for p in group_players:
                     p.participant.vars['early_stop'] = True
                     p.participant.vars['early_stop_round'] = player.round_number
+
+    @staticmethod
+    def vars_for_template(player):
+        session = player.session
+        multiplier = float(session.config.get('contribution_multiplier', Constants.multiplier))
+        players = sorted(player.group.get_players(), key=lambda p: p.id_in_group)
+
+        def _compact_decimal(value):
+            value_f = float(value or 0)
+            if abs(value_f - round(value_f)) < 1e-9:
+                return str(int(round(value_f)))
+            return f"{value_f:.1f}"
+
+        earnings_players = []
+        for member in players:
+            payoff_value = float(member.payoff or 0)
+            earnings_players.append(
+                dict(
+                    id_in_group=member.id_in_group,
+                    is_self=member.id_in_group == player.id_in_group,
+                    payoff=member.payoff,
+                    payoff_display=f"{payoff_value:.1f}",
+                )
+            )
+
+        total_contribution_value = float(player.group.total_contribution or 0)
+        project_outcome_value = total_contribution_value * multiplier
+        project_outcome_max_value = 0.0
+        for member in players:
+            available_before = member.available_before_contribution
+            if available_before is None:
+                available_before = session.config.get('endowment', Constants.endowment)
+            project_outcome_max_value += float(available_before or 0) * multiplier
+        if project_outcome_max_value > 0:
+            project_outcome_fill_percent = max(
+                0.0,
+                min(100.0, (project_outcome_value / project_outcome_max_value) * 100.0),
+            )
+        else:
+            project_outcome_fill_percent = 0.0
+
+        return dict(
+            cumulative_payoff=player.participant.vars.get('cumulative_payoff', c(0)),
+            earnings_players=earnings_players,
+            project_outcome_value=project_outcome_value,
+            project_outcome_max_value=project_outcome_max_value,
+            project_outcome_fill_percent=f"{project_outcome_fill_percent:.2f}",
+            project_outcome_value_display=_compact_decimal(project_outcome_value),
+            project_outcome_max_display=_compact_decimal(project_outcome_max_value),
+        )
 
 # =============================================================================
 # CLASS: FinalResult (ゲームアプリ内の最終ページ)
@@ -1366,6 +1443,7 @@ page_sequence = [
     ContributionResult,
     Punishment,
     PunishmentWaitPage,
+    PunishmentResult,
     RoundResult,
     FinalResult, # <--- ゲームアプリの最後に表示する最終結果ページ
 ]

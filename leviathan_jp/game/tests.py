@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from otree.api import Bot, Submission
+from otree.api import Bot, Submission, SubmissionMustFail
 from otree.database import db
 
 from . import pages
@@ -20,6 +20,7 @@ PAGE_ORDER = [
     "Contribution",
     "ContributionResult",
     "Punishment",
+    "PunishmentResult",
     "RoundResult",
     "FinalResult",
 ]
@@ -29,6 +30,7 @@ PAGE_LABELS = {
     "Contribution": "Contribution",
     "ContributionResult": "ContributionResult",
     "Punishment": "Punishment",
+    "PunishmentResult": "PunishmentResult",
     "RoundResult": "RoundResult",
     "FinalResult": "FinalResult",
 }
@@ -61,6 +63,10 @@ def _save_session_log_state(session, log_state):
 
 def _participant_label(participant):
     return participant.label or f"BOT{participant.id_in_session:02d}"
+
+
+def _bot_progress_logs_enabled(session):
+    return not session.config.get("use_browser_bots")
 
 
 def _browser_bot_stop_stage(session):
@@ -100,6 +106,10 @@ def _print_stage1_once(player, log_state):
     arrivals = log_state["arrivals"]
     if len(arrivals) < player.session.num_participants:
         return
+    if not _bot_progress_logs_enabled(player.session):
+        log_state["stage1_printed"] = True
+        log_state["stage2_started"] = True
+        return
 
     _print_table_title("Stage 1: Introduction and arrival grouping", STAGE1_BORDER)
     print("| bot   | completion_s | group | id_in_group |")
@@ -134,7 +144,7 @@ def _print_stage1_once(player, log_state):
 
     log_state["stage1_printed"] = True
     log_state["stage2_started"] = True
-    _print_ready_page_logs(log_state)
+    _print_ready_page_logs(player.session, log_state)
 
 
 def _record_arrival(player):
@@ -176,7 +186,9 @@ def _page_sort_key(item):
     )
 
 
-def _print_ready_page_logs(log_state):
+def _print_ready_page_logs(session, log_state):
+    if not _bot_progress_logs_enabled(session):
+        return
     if not log_state.get("stage2_started"):
         return
 
@@ -212,7 +224,7 @@ def _record_page_completion(player, page_key):
             page_label=PAGE_LABELS[page_key],
         )
 
-    _print_ready_page_logs(log_state)
+    _print_ready_page_logs(player.session, log_state)
     _save_session_log_state(player.session, log_state)
 
 
@@ -268,6 +280,74 @@ def assert_grouping(player, page_name="GroupingCheck"):
     )
 
 
+def assert_punishment_balance(player):
+    available_before = float(player.available_before_punishment or 0)
+    punishment_given = float(player.punishment_given or 0)
+    punishment_received = float(player.punishment_received or 0)
+    expected_available = available_before - punishment_given - punishment_received
+    actual_available = float(player.available_endowment or 0)
+    assert abs(actual_available - expected_available) < 1e-6, (
+        f"Punishment balance mismatch: round={player.round_number} "
+        f"bot={_participant_label(player.participant)} "
+        f"available_before={available_before} "
+        f"punishment_given={punishment_given} "
+        f"punishment_received={punishment_received} "
+        f"expected_available={expected_available} "
+        f"actual_available={actual_available}"
+    )
+
+
+def assert_contribution_budget(player):
+    endowment = float(player.session.config.get("endowment", Constants.endowment))
+    transfer_cost = float(player.power_transfer_cost or 0)
+    expected_budget = max(0.0, endowment - transfer_cost)
+    actual_budget = float(player.available_endowment or 0)
+    assert abs(actual_budget - expected_budget) < 1e-6, (
+        f"Contribution budget mismatch: round={player.round_number} "
+        f"bot={_participant_label(player.participant)} "
+        f"endowment={endowment} "
+        f"transfer_cost={transfer_cost} "
+        f"expected_budget={expected_budget} "
+        f"actual_budget={actual_budget}"
+    )
+
+
+def assert_contribution_balance(player):
+    available_before = float(player.available_before_contribution or 0)
+    contribution = float(player.contribution or 0)
+    remaining = float(player.available_endowment or 0)
+    expected_remaining = available_before - contribution
+    assert contribution <= available_before + 1e-6, (
+        f"Contribution over budget: round={player.round_number} "
+        f"bot={_participant_label(player.participant)} "
+        f"available_before={available_before} "
+        f"contribution={contribution}"
+    )
+    assert abs(remaining - expected_remaining) < 1e-6, (
+        f"Contribution balance mismatch: round={player.round_number} "
+        f"bot={_participant_label(player.participant)} "
+        f"available_before={available_before} "
+        f"contribution={contribution} "
+        f"expected_remaining={expected_remaining} "
+        f"actual_remaining={remaining}"
+    )
+
+
+def assert_punishment_overdraw_allowed(player):
+    attempted_cost = float(player.attempted_punishment_cost or 0)
+    available_before = float(player.available_before_punishment or 0)
+    if attempted_cost <= available_before:
+        return
+    actual_available = float(player.available_endowment or 0)
+    assert actual_available < 0, (
+        f"Punishment overdraw was unexpectedly clamped: round={player.round_number} "
+        f"bot={_participant_label(player.participant)} "
+        f"attempted_cost={attempted_cost} "
+        f"available_before={available_before} "
+        f"actual_available={actual_available}"
+    )
+
+
 class PlayerBot(Bot):
     def play_round(self):
         if (
@@ -284,7 +364,7 @@ class PlayerBot(Bot):
         bot_rules = {
             "fixed": dict(contribution=0, punishment=0, power_transfer=0.0),
             "transfer_free": dict(contribution=10, punishment=1, power_transfer=0.1),
-            "transfer_cost": dict(contribution=10, punishment=1, power_transfer=0.1),
+            "transfer_cost": dict(contribution=10, punishment=10, power_transfer=0.1),
         }
         rules = bot_rules.get(treatment, bot_rules["fixed"])
 
@@ -300,6 +380,22 @@ class PlayerBot(Bot):
             yield pages.PowerTransferResult
             _record_page_completion(self.player, "PowerTransferResult")
 
+        assert_contribution_budget(self.player)
+        if (
+            self.session.config.get("costly_punishment_transfer")
+            and self.player.round_number >= 3
+        ):
+            available_budget = float(self.player.available_endowment or 0)
+            endowment = float(
+                self.session.config.get("endowment", Constants.endowment)
+            )
+            if available_budget < endowment:
+                yield SubmissionMustFail(
+                    pages.Contribution,
+                    {"contribution": int(available_budget) + 1},
+                    check_html=False,
+                )
+
         contribution_amount = rules.get("contribution", 0) or 0
         yield Submission(
             pages.Contribution,
@@ -308,7 +404,12 @@ class PlayerBot(Bot):
         )
         _record_page_completion(self.player, "Contribution")
         yield pages.ContributionResult
+        assert_contribution_balance(self.player)
         _record_page_completion(self.player, "ContributionResult")
+
+        if self.player.round_number == 1:
+            yield pages.RoundResult
+            _record_page_completion(self.player, "RoundResult")
 
         if self.player.round_number > 1:
             punishment_points = rules.get("punishment", 0) or 0
@@ -318,6 +419,10 @@ class PlayerBot(Bot):
                 check_html=False,
             )
             _record_page_completion(self.player, "Punishment")
+            yield pages.PunishmentResult
+            assert_punishment_balance(self.player)
+            assert_punishment_overdraw_allowed(self.player)
+            _record_page_completion(self.player, "PunishmentResult")
             yield pages.RoundResult
             _record_page_completion(self.player, "RoundResult")
 
