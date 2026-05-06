@@ -62,8 +62,13 @@
     {{ super() }}
     <style>
         .contribution-result-overview .stage-center {
+            flex: 0 0 auto;
             align-items: flex-start;
             padding-top: 0.8rem;
+        }
+
+        .contribution-result-overview .stage-footer {
+            margin-top: clamp(2.5rem, 7vh, 5.5rem);
         }
 
         .contribution-result-desc {

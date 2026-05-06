@@ -227,6 +227,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var selfId = configEl.dataset.selfId || '';
     var selfBar = document.querySelector('.vertical-bar[data-self="true"]');
+    var previousTotalOut = 0;
 
     var powerMax = 0;
     var powerGrid = document.querySelector('.power-grid[data-power-max]');
@@ -250,6 +251,10 @@ document.addEventListener('DOMContentLoaded', function () {
         barsById[id] = { el: bar, base: base };
     });
 
+    inputs.forEach(function (input) {
+        previousTotalOut += normalizeTransfer(input.value || '0');
+    });
+
     function normalizeTransfer(rawValue) {
         var value = parseFloat(rawValue);
         if (!Number.isFinite(value) || value < 0) {
@@ -258,6 +263,49 @@ document.addEventListener('DOMContentLoaded', function () {
         value = Math.round(value / transferUnit) * transferUnit;
         value = Math.max(0, Math.min(maxTransfer, value));
         return parseFloat(value.toFixed(decimals + 1));
+    }
+
+    function parseTransferInput(input) {
+        var rawValue = (input.value || '').trim();
+        var maxDisplay = maxTransfer.toFixed(displayDecimals);
+        var unitDisplay = transferUnit.toFixed(displayDecimals);
+        if (rawValue === '') {
+            return { valid: true, value: 0 };
+        }
+
+        var value = Number(rawValue);
+        if (!Number.isFinite(value)) {
+            return {
+                valid: false,
+                value: 0,
+                message: '譲渡量は数値で入力してください。'
+            };
+        }
+        if (value < -tolerance || value > maxTransfer + tolerance) {
+            return {
+                valid: false,
+                value: 0,
+                message: '譲渡量は 0.0 から ' + maxDisplay + ' までで入力してください。'
+            };
+        }
+        if (transferUnit > 0) {
+            var multiples = value / transferUnit;
+            if (Math.abs(multiples - Math.round(multiples)) > tolerance) {
+                return {
+                    valid: false,
+                    value: 0,
+                    message: '譲渡量は ' + unitDisplay + ' 刻みで入力してください。'
+                };
+            }
+        }
+
+        if (Math.abs(value) < tolerance) {
+            value = 0;
+        }
+        return {
+            valid: true,
+            value: parseFloat(value.toFixed(decimals + 1))
+        };
     }
 
     function setBarValue(barEl, nextValue) {
@@ -298,9 +346,22 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateState(enforceFormat) {
         var totalOut = 0;
         var transferByTarget = {};
+        var allInputsValid = true;
+        var firstErrorMessage = '';
 
         inputs.forEach(function (input) {
-            var normalized = normalizeTransfer((input.value || '').trim());
+            var parsed = parseTransferInput(input);
+            if (!parsed.valid) {
+                allInputsValid = false;
+                if (!firstErrorMessage) {
+                    firstErrorMessage = parsed.message;
+                }
+                input.setCustomValidity(parsed.message);
+                return;
+            }
+
+            var normalized = parsed.value;
+            input.setCustomValidity('');
             if (enforceFormat) {
                 input.value = normalized.toFixed(displayDecimals);
             }
@@ -312,7 +373,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         totalOut = parseFloat(totalOut.toFixed(decimals + 1));
-        var remainingSelf = maxTransfer - totalOut;
+        var selfBase = selfBar ? parseFloat(selfBar.dataset.basePower || selfBar.dataset.power || '0') : 0;
+        if (!Number.isFinite(selfBase)) {
+            selfBase = 0;
+        }
+        var remainingSelf = selfBase + previousTotalOut - totalOut;
         if (Math.abs(remainingSelf) < tolerance) {
             remainingSelf = 0;
         }
@@ -332,7 +397,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             var transferValue = transferByTarget[id] || 0;
-            var nextValue = info.base + transferValue;
+            var inputEl = document.querySelector('.js-transfer-input[data-target="' + id + '"]');
+            var previousTransferValue = inputEl ? normalizeTransfer(inputEl.defaultValue || '0') : 0;
+            var nextValue = info.base - previousTransferValue + transferValue;
             setBarValue(info.el, nextValue);
         });
 
@@ -345,9 +412,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        var isValidTotal = totalOut <= maxTransfer + tolerance;
+        var isValidTotal = allInputsValid && totalOut <= maxTransfer + tolerance;
         if (errorEl) {
-            if (!isValidTotal) {
+            if (firstErrorMessage) {
+                errorEl.textContent = firstErrorMessage;
+                errorEl.style.display = 'block';
+            } else if (!isValidTotal) {
                 errorEl.textContent = '譲渡量の合計は ' + maxTransfer.toFixed(displayDecimals) + ' までです。';
                 errorEl.style.display = 'block';
             } else {

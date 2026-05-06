@@ -42,6 +42,27 @@ The experiment defines three session profiles in `SESSION_CONFIGS`.
 The session flow now starts with `introduction` for rule instructions and comprehension checks, then enters `game` (`app_sequence=['introduction', 'game', 'survey']`).
 At the first wait page in `game`, participants who completed the rules are grouped by arrival time in groups of 5.
 
+### Power Transfer Mechanics
+
+The power-transfer stage follows the status-quo mechanism described in the reference paper.
+
+- The power-transfer stage is shown from round 3 when `power_transfer_allowed=True`.
+- From round 4 onward, each participant's transfer inputs are prefilled with their own decisions from the previous round.
+- Each input represents the current round's final transfer amount to that target, not an additional increment.
+- Keeping a prefilled value unchanged maintains the previous round's transfer.
+- Increasing a value increases the transfer to that target for the current round.
+- Setting a value to `0.0` withdraws the previous transfer to that target.
+
+Allowed transfer inputs are restricted to the configured transfer unit. With the default `punishment_transfer_unit=0.1`, valid values are `0.0`, `0.1`, `0.2`, ..., up to the current round's maximum transfer amount. Invalid values such as `2`, `-0.1`, or `0.15` are rejected on the page and are also checked again by the server.
+
+After all players submit, each player's punishment power is recalculated as:
+
+```text
+final punishment power = 1.0 - total transferred out + total transferred in
+```
+
+In `transfer_cost`, transfer cost is calculated from the total transferred amount and `power_transfer_cost_rate`. In `transfer_free`, transfer has no cost.
+
 ### SESSION_CONFIG_DEFAULTS
 
 These defaults apply to all session profiles unless overridden.
@@ -117,17 +138,36 @@ otree test pggp_transfer_cost
 ```
 
 These tests submit fixed values (contribution, punishment, power transfer). After modifying the code, use these commands to verify the flow completes.
+
+The command-line bot tests also perform automatic checks:
+
+- Introduction quizzes must be completed before participants enter `game`.
+- With `group_by_arrival_time=True`, bots are grouped by arrival order after the introduction app.
+- Each game group must contain `players_per_group` participants.
+- Group membership and `id_in_group` must remain stable across rounds.
+- Game pages must complete in the expected order for the selected treatment.
+
 To test 20 bots with randomized rule-instruction completion delays and arrival-time grouping into 5-person groups, run:
 
 ```bash
 otree test pggp_transfer_free 20
 ```
 
-Bot tests suppress per-page submit logs on success and show output when an error occurs.
+On success, the bot test prints compact stage tables instead of verbose per-page submit logs:
+
+- Stage 1: introduction completion timing and arrival-order grouping.
+- Stage 2: game page completion by round and page.
+
+If an assertion fails, the test output includes the failed round, page, bot label, expected value, and actual value.
 
 ## Browser Bot Manual Handoff
 
-Open `Sessions` in the admin UI, then `Create new session`. In `Configure session`, check `use_browser_bots` and choose `browser_bot_stop_stage`.
-If `browser_bot_stop_stage='introduction'`, participants start manual operation from the introduction app.
-If `browser_bot_stop_stage='game'`, browser bots complete introduction and stop at `browser_bot_stop_round` in the game app.
-If `browser_bot_stop_stage='survey'`, browser bots complete introduction and game, then stop at the survey app.
+Open `Sessions` in the admin UI, then `Create new session`. In `Configure session`, enable `use_browser_bots` and choose `browser_bot_stop_stage`.
+
+This mechanism is used to jump directly to a target part of the experiment for browser-based manual checking:
+
+- `browser_bot_stop_stage='introduction'`: browser bots stop before completing the introduction app. Participants start manual operation from the rule-instruction pages.
+- `browser_bot_stop_stage='game'`: browser bots complete introduction, enter `game`, auto-play until `browser_bot_stop_round`, then hand control back to the browser participant at that game round.
+- `browser_bot_stop_stage='survey'`: browser bots complete introduction and all game rounds, then hand control back at the survey app.
+
+When stopping in `game`, `browser_bot_stop_round` is clamped to the valid round range. The default is round 3. This is useful for checking later pages such as power transfer, punishment, round results, and history modals without manually completing every earlier page.

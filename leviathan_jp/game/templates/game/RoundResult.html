@@ -89,7 +89,7 @@
                                                 プレイヤー {{ matrix_row.giver_id }}
                                             {% endif %}
                                         </span>
-                                        <span class="power-tag">({{ matrix_row.power_display }})</span>
+                                        <span class="power-tag">【{{ matrix_row.power_display }}】</span>
                                     </div>
                                 </td>
                                 {% for cell in matrix_row.cells %}
@@ -99,7 +99,7 @@
                                         <td class="matrix-slider-cell matrix-slider-cell--static"
                                             style="--punish-fill: {{ cell.fill_percent }}%;">
                                             <span class="slider-value">{{ cell.points_display }}/{{ per_target_dp_limit }}</span>
-                                            <span class="slider-effect">({{ cell.effect_display }})</span>
+                                            <span class="slider-effect">【{{ cell.effect_display }}】</span>
                                         </td>
                                     {% endif %}
                                 {% endfor %}
