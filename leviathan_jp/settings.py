@@ -33,18 +33,21 @@ SESSION_CONFIG_DEFAULTS = dict(
     num_demo_participants=5,
     enable_timeout_autoplay=True,
     per_target_dp_limit=10,
-    decision_timeout_seconds=60,
+    decision_timeout_seconds=30,
     dropout_timeout_pages=3,
     early_stop_min_rounds=14,
     early_stop_dropout_count=1,
-    non_decision_timeout_seconds=60,
+    non_decision_timeout_seconds=30,
+    group_by_arrival_time=True,
+    browser_bot_stop_stage='game',
+    browser_bot_stop_round=3,
 )
 
 SESSION_CONFIGS = [
     dict(
         name='pggp_fixed',
         display_name="公共財ゲーム（減点効果固定）",
-        app_sequence=['game', 'survey'], 
+        app_sequence=['introduction', 'game', 'survey'],
         num_demo_participants=5,
         players_per_group=5,
         num_rounds=20,  # ラウンド数
@@ -60,12 +63,13 @@ SESSION_CONFIGS = [
         practice_rounds=0,
         treatment_name='fixed',
         use_browser_bots=False,
-        browser_bot_stop_round=2,
+        browser_bot_stop_stage='game',
+        browser_bot_stop_round=3,
     ),
     dict(
         name='pggp_transfer_free',
         display_name="公共財ゲーム（減点効果移譲・コストなし）",
-        app_sequence=['game', 'survey'], 
+        app_sequence=['introduction', 'game', 'survey'],
         num_demo_participants=5,
         players_per_group=5,
         num_rounds=20,  # ラウンド数
@@ -81,12 +85,13 @@ SESSION_CONFIGS = [
         practice_rounds=0,
         treatment_name='transfer_free',
         use_browser_bots=False,
-        browser_bot_stop_round=2,
+        browser_bot_stop_stage='game',
+        browser_bot_stop_round=3,
     ),
     dict(
         name='pggp_transfer_cost',
         display_name="公共財ゲーム（減点効果移譲・コストあり）",
-        app_sequence=['game', 'survey'], 
+        app_sequence=['introduction', 'game', 'survey'],
         num_demo_participants=5,
         players_per_group=5,
         num_rounds=20,  # ラウンド数
@@ -102,7 +107,8 @@ SESSION_CONFIGS = [
         practice_rounds=0,
         treatment_name='transfer_cost',
         use_browser_bots=False,
-        browser_bot_stop_round=2,
+        browser_bot_stop_stage='game',
+        browser_bot_stop_round=3,
     ),
 ]
 

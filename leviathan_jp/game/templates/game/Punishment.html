@@ -93,7 +93,7 @@
                                             プレイヤー {{ row.id_in_group }}
                                         {% endif %}
                                     </span>
-                                    <span class="power-tag">({{ row.power_display }})</span>
+                                    <span class="power-tag">【{{ row.power_display }}】</span>
                                 </div>
                             </td>
                             {% for col in players_data %}
@@ -110,7 +110,7 @@
                                                data-target="{{ col.id_in_group }}">
                                         <span class="slider-thumb" data-thumb-for="{{ col.id_in_group }}"></span>
                                         <span class="slider-value" data-value-for="{{ col.id_in_group }}">0/{{ per_target_dp_limit }}</span>
-                                        <span class="slider-effect" data-effect-for="{{ col.id_in_group }}">(0)</span>
+                                        <span class="slider-effect" data-effect-for="{{ col.id_in_group }}">【0】</span>
                                     </td>
                                 {% else %}
                                     <td class="matrix-placeholder">?</td>
@@ -184,8 +184,6 @@
         const effectBase = parseFloat('{{ power_effectiveness }}') || 1.0;
         const sliders = document.querySelectorAll('.punish-slider');
         const nextButton = document.querySelector('button.otree-next-button');
-        const availableMu = parseFloat('{{ remaining_mu_value }}');
-        const punishmentCost = parseFloat('{{ punishment_cost }}');
 
         const maxPerTarget = parseInt('{{ per_target_dp_limit }}', 10);
 
@@ -319,11 +317,11 @@
                 }
                 const value = parsePunishValue(inputEl);
                 if (!Number.isFinite(value) || value <= 0) {
-                    effectEl.textContent = '(0)';
+                    effectEl.textContent = '【0】';
                     return;
                 }
                 const loss = value * effectBase * powerText;
-                effectEl.textContent = '(' + loss.toFixed(1) + ')';
+                effectEl.textContent = '【' + loss.toFixed(1) + '】';
             });
 
             document.querySelectorAll('.slider-value').forEach(function(valueEl) {
@@ -333,26 +331,6 @@
                 const displayValue = Number.isFinite(value) ? value : 0;
                 valueEl.textContent = displayValue + '/' + maxPerTarget;
             });
-
-            const totalCost = Number.isFinite(punishmentCost)
-                ? totalUsed * punishmentCost
-                : totalUsed;
-            const budgetExceeded = Number.isFinite(availableMu) && totalCost > availableMu + 1e-6;
-            if (budgetExceeded) {
-                const firstInput = inputs[0];
-                if (firstInput) {
-                    firstInput.setCustomValidity('減点の総コストが残りMUを超えています。');
-                    if (showMessage && typeof firstInput.reportValidity === 'function') {
-                        firstInput.reportValidity();
-                    }
-                }
-                allValid = false;
-            } else {
-                const firstInput = inputs[0];
-                if (firstInput && firstInput.validationMessage === '減点の総コストが残りMUを超えています。') {
-                    firstInput.setCustomValidity('');
-                }
-            }
 
             if (nextButton) {
                 nextButton.disabled = !allValid;
@@ -473,14 +451,16 @@
         }
 
         .punishment-table .bar-track--compact .bar-text {
-            font-size: 0.68rem;
-            color: #efefef;
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: #f7f7f7;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.65);
         }
 
         .dp-cost-box {
             border: 1px solid #b06a35;
             color: #b06a35;
-            font-size: 0.68rem;
+            font-size: 0.82rem;
             padding: 0.26rem 0.35rem;
             border-radius: 2px;
             text-align: center;
@@ -516,13 +496,15 @@
             position: relative;
             z-index: 1;
             color: #f0e7dd;
+            font-weight: 600;
         }
 
         .player-row-label {
             display: flex;
             align-items: center;
             gap: 0.35rem;
-            font-size: 0.72rem;
+            font-size: 0.78rem;
+            font-weight: 600;
         }
 
         .player-name {
@@ -597,17 +579,19 @@
             left: 50%;
             top: 50%;
             transform: translate(-50%, -50%);
-            color: #f2f2f2;
-            font-size: 0.7rem;
+            color: #f8f8f8;
+            font-size: 0.84rem;
+            font-weight: 700;
             letter-spacing: 0.02em;
             pointer-events: none;
             z-index: 1;
-            text-shadow: 0 0 6px rgba(0, 0, 0, 0.45);
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.6);
         }
 
         .slider-effect {
             color: #c7972f;
-            font-size: 0.7rem;
+            font-size: 0.8rem;
+            font-weight: 600;
             position: absolute;
             right: calc(-0.5 * var(--punish-gap));
             top: 50%;
@@ -669,6 +653,11 @@
         .punishment-table td.matrix-note {
             border-color: transparent;
             background: transparent;
+        }
+
+        .punishment-table .matrix-note {
+            font-size: 0.8rem;
+            font-weight: 600;
         }
 
         .punishment-table th:first-child,
@@ -735,7 +724,8 @@
             width: 33.3333% !important;
             min-width: 44px;
             max-width: 72px;
-            font-size: 0.85rem;
+            font-size: 0.88rem;
+            font-weight: 600;
             padding: 0.2rem 0.35rem;
             margin-left: auto;
             margin-right: auto;

@@ -2,7 +2,7 @@
 {% load otree static %}
 
 {% block title %}
-    待機中
+    実験開始までお待ちください
 {% endblock %}
 
 {% block body_main %}
@@ -22,8 +22,6 @@
     .otree-wait-page {
         position: fixed;
         inset: 0;
-        left: 0;
-        top: 0;
         width: 100vw !important;
         height: 100vh !important;
         max-width: none !important;
@@ -80,6 +78,7 @@
         .wait-panel {
             max-width: 92vw;
         }
+
         .wait-panel p {
             white-space: normal;
             text-align: center;
@@ -88,17 +87,13 @@
 </style>
 <div class="otree-wait-page">
     <div class="wait-panel">
-        <p>現在は減点効果移譲フェーズです。他の参加者が減点効果の移譲を完了するまで、お待ちください。（{{ waiting_progress }}/{{ waiting_total }} 名が完了）</p>
+        <p>ルール確認を完了した参加者から順に、5人そろい次第グループを作成して実験を開始します。</p>
     </div>
 </div>
 <script>
-    document.title = '待機中';
-</script>
-{% if waiting_progress < waiting_total %}
-<script>
+    document.title = '実験開始までお待ちください';
     setTimeout(function () {
         window.location.reload();
     }, 2000);
 </script>
-{% endif %}
 {% endblock %}

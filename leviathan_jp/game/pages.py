@@ -1,5 +1,7 @@
 # game/pages.py
 
+import math
+
 from otree import settings as otree_settings
 from otree.api import Page, WaitPage
 
@@ -251,43 +253,57 @@ class BasePage(Page):
         if not isinstance(data, dict):
             return
         if data.get('dismiss_dropout_warning'):
-            player.participant.vars['dropout_warning_active'] = False
-            player.participant.vars['auto_play'] = False
-            player.participant.vars['consecutive_timeouts'] = 0
+            # Dropout is now a confirmed state and cannot be manually cleared.
+            player.participant.vars['dropout_warning_active'] = bool(
+                player.participant.vars.get('dropout_confirmed')
+            )
+            player.participant.vars['auto_play'] = bool(
+                player.participant.vars.get('dropout_confirmed')
+            )
 
 
 def _force_manual_after_bot_stop_round(player):
     """
-    Hard-stop browser-bot mode once we are past the configured stop round.
+    Hard-stop browser-bot mode once the configured manual handoff point is reached.
     This prevents bot-only submission handling from leaking into manual rounds.
     """
     if not player.session.config.get("use_browser_bots"):
         return False
-    stop_round = player.session.config.get("browser_bot_stop_round")
-    # Safety override: round 3 introduces instruction/quiz branching that should
-    # always be manual in this project workflow. Even if stop_round is configured
-    # higher, force browser bots to stop no later than round 2.
-    if stop_round is None:
-        stop_round = 2
-    else:
-        try:
-            stop_round = int(stop_round)
-        except (TypeError, ValueError):
-            stop_round = 2
-        stop_round = min(stop_round, 2)
-    if not stop_round:
+    stop_stage = player.session.config.get("browser_bot_stop_stage", "game")
+    if stop_stage != "game":
         return False
-    if player.round_number <= stop_round:
+    stop_round = _browser_bot_stop_round(player.session)
+    if player.round_number < stop_round:
         return False
-    if not (player.participant.is_browser_bot or player.participant._is_bot):
+    if not _is_browser_bot_participant(player):
         return False
 
+    _disable_browser_bot(player)
+    return True
+
+
+def _browser_bot_stop_round(session):
+    stop_round = session.config.get("browser_bot_stop_round")
+    if stop_round is None:
+        return 3
+    try:
+        stop_round = int(stop_round)
+    except (TypeError, ValueError):
+        stop_round = 3
+    return max(1, min(stop_round, Constants.num_rounds))
+
+
+def _is_browser_bot_participant(player):
+    return bool(player.participant.is_browser_bot or player.participant._is_bot)
+
+
+def _disable_browser_bot(player):
     player.participant.is_browser_bot = False
     player.participant._is_bot = False
     player.participant.vars['auto_play'] = False
     player.participant.vars['consecutive_timeouts'] = 0
     player.participant.vars['dropout_warning_active'] = False
-    return True
+    player.participant.vars['dropout_confirmed'] = False
 
 
 def _intro_stage(player):
@@ -310,6 +326,19 @@ def _skip_intro_for_browser_bot(player):
         return False
 
     return True
+
+
+class ExperimentGroupWait(WaitPage):
+    group_by_arrival_time = True
+    template_name = "game/ExperimentGroupWait.html"
+    title_text = "実験開始までお待ちください"
+    body_text = "ルール確認を完了した参加者から順に、5人そろい次第グループを作成して実験を開始します。"
+
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number == 1 and player.session.config.get(
+            "group_by_arrival_time", True
+        )
 
 
 class RoundInstruction(BasePage):
@@ -419,6 +448,11 @@ class Contribution(BasePage):
             player.participant.vars['consecutive_timeouts'] = 0
             player.participant.vars['auto_play'] = False
             player.participant.vars['dropout_warning_active'] = False
+            player.participant.vars['dropout_confirmed'] = False
+            return
+        if player.participant.vars.get('dropout_confirmed'):
+            player.participant.vars['auto_play'] = True
+            player.participant.vars['dropout_warning_active'] = True
             return
         threshold = player.session.config.get('dropout_timeout_pages', 3)
         if threshold is None or threshold <= 0:
@@ -426,6 +460,7 @@ class Contribution(BasePage):
                 player.participant.vars['consecutive_timeouts'] = 0
             player.participant.vars['auto_play'] = False
             player.participant.vars['dropout_warning_active'] = False
+            player.participant.vars['dropout_confirmed'] = False
             return
         if timeout_happened:
             streak = player.participant.vars.get('consecutive_timeouts', 0) + 1
@@ -433,10 +468,12 @@ class Contribution(BasePage):
             if streak >= threshold:
                 player.participant.vars['auto_play'] = True
                 player.participant.vars['dropout_warning_active'] = True
+                player.participant.vars['dropout_confirmed'] = True
         else:
             player.participant.vars['consecutive_timeouts'] = 0
             player.participant.vars['auto_play'] = False
             player.participant.vars['dropout_warning_active'] = False
+            player.participant.vars['dropout_confirmed'] = False
 
     @staticmethod
     def vars_for_template(player):
@@ -470,6 +507,8 @@ class Contribution(BasePage):
             return '投資額を入力してください。'
         endowment = player.session.config.get('endowment', Constants.endowment)
         amount = float(contribution)
+        if not math.isfinite(amount):
+            return '投資額は0から20までの範囲で入力してください。'
         available = float(player.available_endowment or endowment)
         if amount < 0 or amount > available:
             limit = int(available)
@@ -711,19 +750,22 @@ class PowerTransfer(BasePage):
     @staticmethod
     def error_message(player, values):
         transfer_unit = player.session.config.get("punishment_transfer_unit", 0.1)
-        tolerance = 1e-6
+        tolerance = 1e-4
         current_power_value = float(player.punishment_power_before or 0)
         previous_out_total = _previous_transfer_total(player)
         max_transfer_limit = max(0.0, min(1.0, current_power_value + previous_out_total))
-        total = 0
+        total = 0.0
         for value in values.values():
             if value is None:
                 continue
-            if value < -tolerance:
+            amount = float(value)
+            if not math.isfinite(amount):
                 return "譲渡量は0以上で入力してください。"
-            total += value
+            if amount < -tolerance:
+                return "譲渡量は0以上で入力してください。"
+            total += amount
             if transfer_unit > 0:
-                multiples = value / transfer_unit
+                multiples = amount / transfer_unit
                 if abs(multiples - round(multiples)) > 1e-6:
                     return f"譲渡量は {transfer_unit} の倍数で入力してください。"
 
@@ -1020,33 +1062,19 @@ class Punishment(BasePage):
 
     @staticmethod
     def error_message(player, values):
-        total_punishment = 0
         per_target_limit = player.session.config.get('per_target_dp_limit', player.session.config['deduction_points'])
-        endowment = player.session.config.get('endowment', Constants.endowment)
-        contribution = player.contribution or 0
         for i in range(1, Constants.players_per_group + 1):
             field_name = f'punish_p{i}'
             if field_name in values and values[field_name] is not None:
-                value = values[field_name]
+                value = float(values[field_name])
+                if not math.isfinite(value):
+                    return "減点は0以上の整数で入力してください。"
                 if value < 0:
                     return "減点は0以上の整数で入力してください。"
                 if int(value) != value:
                     return "減点は整数で入力してください。"
                 if value > per_target_limit:
                     return f"各プレイヤーへの減点は {per_target_limit} 以内で入力してください。"
-                total_punishment += value
-        punishment_cost = player.session.config.get('punishment_cost', 1)
-        total_cost = total_punishment * punishment_cost
-        available = float(player.available_before_punishment or player.available_endowment or 0)
-        computed_available = float(endowment - contribution)
-        if computed_available > available + 1e-6:
-            available = computed_available
-        if total_cost > available + 1e-4:
-            if punishment_cost > 0:
-                max_points = int((available + 1e-6) // punishment_cost)
-            else:
-                max_points = total_punishment
-            return f"現在、使えるMUは {max_points} です。もう一度試して下さい。"
 
     @staticmethod
     def before_next_page(player, timeout_happened):
@@ -1150,6 +1178,7 @@ class RoundResult(BasePage):
                 endowment_display=endowment_display,
                 punishment_sent_total=0,
                 punishment_sent_total_display="0",
+                punishment_cost_total_display="0.0",
                 punishment_received_total=0,
                 power_before=member.punishment_power_before,
                 power_after=power_after_value,
@@ -1178,6 +1207,10 @@ class RoundResult(BasePage):
                     total_sent += getattr(member, field_name, 0) or 0
             players_map[member.id_in_group]['punishment_sent_total'] = total_sent
             players_map[member.id_in_group]['punishment_sent_total_display'] = str(int(round(float(total_sent))))
+            punishment_cost_total = member.punishment_given
+            if punishment_cost_total is None:
+                punishment_cost_total = c(float(total_sent) * float(session.config.get('punishment_cost', 1)))
+            players_map[member.id_in_group]['punishment_cost_total_display'] = f"{float(punishment_cost_total):.1f}"
             effect_total = float(total_sent) * float(effectiveness_base) * players_map[member.id_in_group]['power_after_value']
             players_map[member.id_in_group]['punishment_effect_display'] = f"{effect_total:.1f}"
             players_map[member.id_in_group]['punishment_sent_fill_percent'] = (
@@ -1246,25 +1279,13 @@ class RoundResult(BasePage):
     @staticmethod
     def before_next_page(player, timeout_happened):
         Contribution._update_timeout_streak(player, timeout_happened)
-        stop_round = player.session.config.get('browser_bot_stop_round')
-        if stop_round is None:
-            stop_round = 2
-        else:
-            try:
-                stop_round = int(stop_round)
-            except (TypeError, ValueError):
-                stop_round = 2
-            stop_round = min(stop_round, 2)
         if (
-            stop_round
-            and player.round_number >= stop_round
-            and (player.participant.is_browser_bot or player.participant._is_bot)
+            player.session.config.get('use_browser_bots')
+            and player.session.config.get('browser_bot_stop_stage', 'game') == 'game'
+            and player.round_number >= _browser_bot_stop_round(player.session)
+            and _is_browser_bot_participant(player)
         ):
-            player.participant.is_browser_bot = False
-            player.participant._is_bot = False
-            player.participant.vars['auto_play'] = False
-            player.participant.vars['consecutive_timeouts'] = 0
-            player.participant.vars['dropout_warning_active'] = False
+            _disable_browser_bot(player)
 
         session = player.session
         if session.vars.get('early_stop_round'):
@@ -1279,7 +1300,7 @@ class RoundResult(BasePage):
             dropout_count = sum(
                 1
                 for p in group_players
-                if p.participant.vars.get('auto_play')
+                if p.participant.vars.get('dropout_confirmed')
             )
             if dropout_count >= dropout_threshold:
                 session.vars['early_stop_round'] = player.round_number
@@ -1336,6 +1357,7 @@ class FinalResult(BasePage):
 # ページの表示順
 # =============================================================================
 page_sequence = [
+    ExperimentGroupWait,
     PowerTransfer,
     PowerTransferWait,
     PowerTransferResult,

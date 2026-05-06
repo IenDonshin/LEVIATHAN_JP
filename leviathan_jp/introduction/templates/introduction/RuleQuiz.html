@@ -1,0 +1,78 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    理解度チェック
+{% endblock %}
+
+{% block content %}
+<div class="stage-layout">
+    <div class="stage-header">
+        <div>
+            <div class="stage-title">理解度チェック</div>
+            <div class="stage-subtitle">
+                {% if intro_stage == "round1" %}
+                    投資フェーズ
+                {% elif intro_stage == "round2" %}
+                    減点フェーズ
+                {% elif intro_stage == "round3" %}
+                    {% if power_transfer_allowed %}減点効果移譲フェーズ{% else %}実験の進行{% endif %}
+                {% endif %}
+            </div>
+        </div>
+        <div class="stage-desc rule-quiz-desc">
+            <span class="desc-line">全問正解すると次のページに進めます。</span>
+        </div>
+    </div>
+
+    <div class="stage-center">
+        <div class="stage-stack quiz-stack" style="width: 100%;">
+            {{ formfields }}
+        </div>
+    </div>
+
+    <div class="stage-footer">
+        <div class="action-row">
+            {% next_button %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block internal_scripts %}
+    {{ super() }}
+    <style>
+        .quiz-stack {
+            width: min(100%, 1180px) !important;
+            margin: 0 auto;
+            align-items: flex-start;
+        }
+
+        .quiz-stack > * {
+            width: 100%;
+            text-align: left;
+        }
+
+        .quiz-stack .form-group,
+        .quiz-stack .controls,
+        .quiz-stack .control-label,
+        .quiz-stack label {
+            text-align: left;
+        }
+
+        .quiz-stack .form-group {
+            margin-bottom: 2.2rem;
+        }
+
+        .rule-quiz-desc .desc-line {
+            display: block;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 980px) {
+            .rule-quiz-desc .desc-line {
+                white-space: normal;
+            }
+        }
+    </style>
+{% endblock %}

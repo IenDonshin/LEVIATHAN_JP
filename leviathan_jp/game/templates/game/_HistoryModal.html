@@ -156,14 +156,18 @@
     }
 
     .history-result-table .bar-track--compact .bar-text {
-        font-size: 0.68rem;
-        color: #efefef;
+        font-size: 0.86rem;
+        font-weight: 700;
+        color: #ffffff;
+        text-shadow:
+            0 1px 1px rgba(0, 0, 0, 0.9),
+            0 0 2px rgba(0, 0, 0, 0.7);
     }
 
     .history-result-table .dp-cost-box {
         border: 1px solid #b06a35;
         color: #b06a35;
-        font-size: 0.68rem;
+        font-size: 0.82rem;
         border-radius: 2px;
         text-align: center;
         background: rgba(40, 32, 24, 0.65);
@@ -197,7 +201,8 @@
         display: flex;
         align-items: center;
         gap: 0.35rem;
-        font-size: 0.72rem;
+        font-size: 0.78rem;
+        font-weight: 600;
     }
 
     .history-result-table .player-name {
@@ -231,14 +236,15 @@
         top: 50%;
         transform: translate(-50%, -50%);
         color: #f2f2f2;
-        font-size: 0.7rem;
+        font-size: 0.84rem;
+        font-weight: 700;
         pointer-events: none;
         z-index: 1;
     }
 
     .history-result-table td.matrix-slider-cell--static .slider-effect {
         color: #c7972f;
-        font-size: 0.7rem;
+        font-size: 0.8rem;
         position: absolute;
         right: calc(-0.5 * var(--punish-gap));
         top: 50%;
@@ -257,6 +263,11 @@
     .history-result-table td.matrix-note {
         border-color: transparent;
         background: transparent;
+    }
+
+    .history-result-table .matrix-note {
+        font-size: 0.8rem;
+        font-weight: 600;
     }
 
     .history-result-table th:first-child,

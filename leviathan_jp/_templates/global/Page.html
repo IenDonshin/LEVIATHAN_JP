@@ -9,8 +9,8 @@
         --ui-panel: #2f2f2f;
         --ui-panel-soft: #333333;
         --ui-border: #5a5a5a;
-        --ui-text: #f1f1f1;
-        --ui-muted: #b9b9b9;
+        --ui-text: #ffffff;
+        --ui-muted: #e2e2e2;
         --ui-accent: #3b74c6;
         --ui-accent-strong: #2f5fa7;
         --ui-warn: #e2b645;
@@ -21,6 +21,15 @@
         --ui-common-bar-height: 30px;
     }
 
+    html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+
     body {
         background:
             radial-gradient(circle at 10% 10%, rgba(80, 110, 170, 0.15), transparent 55%),
@@ -28,6 +37,8 @@
             linear-gradient(180deg, #3b3b3b 0%, #2f2f2f 100%);
         color: var(--ui-text);
         font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+        font-size: 1.06rem;
+        line-height: 1.58;
         letter-spacing: 0.01em;
     }
 
@@ -79,8 +90,8 @@
         background: #d7d7d7;
         color: #2a2a2a;
         border: 1px solid #a0a0a0;
-        font-size: 0.78rem;
-        padding: 0.35rem 0.9rem;
+        font-size: 0.92rem;
+        padding: 0.42rem 1rem;
         border-radius: 2px;
         text-transform: none;
         letter-spacing: 0.02em;
@@ -105,6 +116,7 @@
 
     .stage-layout {
         min-height: calc(100vh - 10rem);
+        min-height: calc(100dvh - 10rem);
         display: flex;
         flex-direction: column;
         gap: 2.5rem;
@@ -120,20 +132,21 @@
     }
 
     .stage-title {
-        font-size: 1.15rem;
-        font-weight: 600;
+        font-size: 1.38rem;
+        font-weight: 700;
         text-transform: lowercase;
     }
 
     .stage-subtitle {
-        font-size: 0.85rem;
+        font-size: 1.02rem;
+        font-weight: 500;
         color: var(--ui-muted);
         margin-top: 0.4rem;
     }
 
     .stage-desc {
         max-width: 420px;
-        font-size: 0.78rem;
+        font-size: 1rem;
         line-height: 1.6;
         text-align: right;
         color: var(--ui-muted);
@@ -201,9 +214,13 @@
     .action-row .otree-btn-next,
     .action-row button[type="submit"] {
         min-width: 0 !important;
+        width: auto !important;
         width: fit-content !important;
         max-width: 100%;
         flex: 0 0 auto !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .player-grid {
@@ -237,7 +254,7 @@
     }
 
     .player-label {
-        font-size: 0.82rem;
+        font-size: 0.96rem;
         color: var(--ui-muted);
         margin-bottom: 0.7rem;
     }
@@ -274,7 +291,7 @@
         top: 8px;
         left: 0;
         right: 0;
-        font-size: 0.82rem;
+        font-size: 0.98rem;
         font-weight: 600;
         color: var(--ui-text);
     }
@@ -310,10 +327,12 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: #f5f5f5;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        font-size: 1.08rem;
+        font-weight: 700;
+        color: #ffffff;
+        text-shadow:
+            0 1px 1px rgba(0, 0, 0, 0.9),
+            0 0 2px rgba(0, 0, 0, 0.7);
     }
 
     .ui-input,
@@ -324,8 +343,26 @@
         border: 1px solid var(--ui-border);
         text-align: center;
         padding: 0.35rem 0.5rem;
+        font-size: 1rem;
         border-radius: 2px;
         width: 100%;
+    }
+
+    .otree-form input[type="number"] {
+        appearance: textfield;
+        -moz-appearance: textfield;
+    }
+
+    .otree-form input[type="number"]::-webkit-outer-spin-button,
+    .otree-form input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .ui-slider,
+    input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
     }
 
     .ui-input:focus,
@@ -362,7 +399,7 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.8rem;
+        font-size: 0.94rem;
         padding: 0 0.65rem;
     }
 
@@ -394,6 +431,7 @@
     }
 
     .ui-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
         appearance: none;
         width: 14px;
         height: 14px;
@@ -435,7 +473,7 @@
     }
 
     .ui-label {
-        font-size: 0.75rem;
+        font-size: 0.9rem;
         color: var(--ui-muted);
         margin-bottom: 0.35rem;
         display: block;
@@ -449,7 +487,7 @@
     }
 
     .matrix-table th {
-        font-size: 0.75rem;
+        font-size: 0.9rem;
         color: var(--ui-muted);
         font-weight: 600;
         text-transform: none;
@@ -470,6 +508,7 @@
         text-align: center;
         padding: 0.35rem;
         min-width: 72px;
+        font-size: 0.95rem;
     }
 
     .matrix-table.matrix-table--inputs td {
@@ -508,7 +547,8 @@
     }
 
     .matrix-note {
-        font-size: 0.75rem;
+        font-size: 0.8rem;
+        font-weight: 600;
         color: var(--ui-muted);
     }
 
@@ -578,7 +618,7 @@
         bottom: 0;
         z-index: 1030;
         background: rgba(35, 35, 35, 0.95);
-        padding: 0.42rem 0.9rem 0.46rem;
+        padding: 0.42rem 0.9rem calc(0.46rem + env(safe-area-inset-bottom, 0px));
         border-top: 1px solid #5b5b5b;
         box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25);
     }
@@ -623,7 +663,7 @@
     }
 
     .otree-body {
-        padding-bottom: 4.8rem;
+        padding-bottom: calc(4.8rem + env(safe-area-inset-bottom, 0px));
     }
 
     .otree-timer {
@@ -647,12 +687,11 @@
 {% endif %}
 <div id="dropout-warning-overlay" class="dropout-warning-overlay" data-dropout-warning="0">
     <div class="dropout-warning-card">
-        <div class="dropout-warning-title">離脱の可能性があります</div>
+        <div class="dropout-warning-title">離脱と判定されました</div>
         <div class="dropout-warning-text">
-            操作が確認できないため、自動決定に切り替わります。<br>
-            続行する場合は「続行」を押してください。
+            規定回数のタイムアウトが発生したため、<br>
+            この参加者は離脱として扱われ、自動決定で進行します。
         </div>
-        <button type="button" class="btn" data-dropout-dismiss>続行</button>
     </div>
 </div>
 {% endblock %}
@@ -866,15 +905,6 @@
         }
         if (warningEl && warningActive) {
             warningEl.classList.add('is-active');
-            var dismissBtn = warningEl.querySelector('[data-dropout-dismiss]');
-            if (dismissBtn) {
-                dismissBtn.addEventListener('click', function () {
-                    warningEl.classList.remove('is-active');
-                    if (typeof liveSend === 'function') {
-                        liveSend({ dismiss_dropout_warning: true });
-                    }
-                });
-            }
         }
         document.querySelectorAll('[required]').forEach(function(el) {
             el.addEventListener('invalid', function () {

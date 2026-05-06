@@ -28,8 +28,8 @@ All configuration lives in `leviathan_jp/settings.py`.
 ### Timeout & Dropout Behavior
 
 - If a participant does not submit before the countdown ends, the page is auto-submitted.
-- If three consecutive pages are auto-submitted, the participant is flagged as a suspected dropout and a warning modal appears.
-- Closing the warning modal clears the suspected dropout flag.
+- If three consecutive pages are auto-submitted, the participant is treated as a dropout and switched to auto-decisions.
+- Confirmed dropouts are counted for early-stop decisions.
 
 ### Session Profiles
 
@@ -39,8 +39,8 @@ The experiment defines three session profiles in `SESSION_CONFIGS`.
 - `pggp_transfer_free` -> treatment `transfer_free`
 - `pggp_transfer_cost` -> treatment `transfer_cost`
 
-The session flow now starts directly from `game` (`app_sequence=['game', 'survey']`).
-The former `introduction` app is no longer used.
+The session flow now starts with `introduction` for rule instructions and comprehension checks, then enters `game` (`app_sequence=['introduction', 'game', 'survey']`).
+At the first wait page in `game`, participants who completed the rules are grouped by arrival time in groups of 5.
 
 ### SESSION_CONFIG_DEFAULTS
 
@@ -53,11 +53,12 @@ These defaults apply to all session profiles unless overridden.
 | `num_demo_participants` | `5` | Default demo participant count. |
 | `enable_timeout_autoplay` | `True` | Auto-advance on timeouts for pages. |
 | `per_target_dp_limit` | `10` | Per-target DP cap in punishment. If not set, `deduction_points` is used. |
-| `decision_timeout_seconds` | `60` | Timeout for decision pages. |
+| `decision_timeout_seconds` | `30` | Timeout for decision pages. |
 | `dropout_timeout_pages` | `3` | Number of consecutive timeout pages to flag a participant as a suspected dropout (sets the dropout warning flag). |
 | `early_stop_min_rounds` | `14` | Minimum rounds before early stop can trigger. |
 | `early_stop_dropout_count` | `1` | Number of suspected dropouts required to trigger early stop once the minimum rounds condition is met. |
 | `non_decision_timeout_seconds` | `60` | Timeout for non-decision pages. |
+| `group_by_arrival_time` | `True` | Group participants by arrival time at the start of `game` after they complete `introduction`. |
 
 ### Per-Session Keys
 
@@ -67,7 +68,7 @@ These keys appear in the session profiles inside `SESSION_CONFIGS`.
 | --- | --- |
 | `name` | Session name used by oTree. |
 | `display_name` | Label shown in the admin UI. |
-| `app_sequence` | App order for the session (`['game', 'survey']`). |
+| `app_sequence` | App order for the session (`['introduction', 'game', 'survey']`). |
 | `num_demo_participants` | Demo participant count for this session. |
 | `players_per_group` | Group size. |
 | `num_rounds` | Number of rounds. |
@@ -83,7 +84,8 @@ These keys appear in the session profiles inside `SESSION_CONFIGS`.
 | `practice_rounds` | Practice rounds (currently `0`). |
 | `treatment_name` | Used to branch logic and labels. |
 | `use_browser_bots` | Auto-play for testing. |
-| `browser_bot_stop_round` | Round at which bots stop. |
+| `browser_bot_stop_stage` | Manual handoff stage: `introduction`, `game`, or `survey`. |
+| `browser_bot_stop_round` | Game round where bots stop when `browser_bot_stop_stage='game'`. |
 
 ### Global Settings
 
@@ -115,8 +117,17 @@ otree test pggp_transfer_cost
 ```
 
 These tests submit fixed values (contribution, punishment, power transfer). After modifying the code, use these commands to verify the flow completes.
+To test 20 bots with randomized rule-instruction completion delays and arrival-time grouping into 5-person groups, run:
 
-## How to Go Directly to a Specific Round
+```bash
+otree test pggp_transfer_free 20
+```
 
-Open `Sessions` in the admin UI, then `Create new session`. In `Configure session`, check `use_browser_bots`. It defaults to round 3, but you can change it. After creating the session, each participant page will auto-advance to the target round.
-When `use_browser_bots` is enabled, round-introduction and quiz pages are skipped for browser bots so fast-forwarding is not blocked.
+Bot tests suppress per-page submit logs on success and show output when an error occurs.
+
+## Browser Bot Manual Handoff
+
+Open `Sessions` in the admin UI, then `Create new session`. In `Configure session`, check `use_browser_bots` and choose `browser_bot_stop_stage`.
+If `browser_bot_stop_stage='introduction'`, participants start manual operation from the introduction app.
+If `browser_bot_stop_stage='game'`, browser bots complete introduction and stop at `browser_bot_stop_round` in the game app.
+If `browser_bot_stop_stage='survey'`, browser bots complete introduction and game, then stop at the survey app.

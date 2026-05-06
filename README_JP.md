@@ -28,8 +28,8 @@ otree devserver 0.0.0.0:8000
 ### タイムアウトと疑似退出の挙動
 
 - カウントダウン終了までに送信されない場合、ページは自動送信されます。
-- 自動送信が3ページ連続すると「途中退出の疑い」として警告モーダルが表示されます。
-- 警告モーダルを閉じると疑似退出フラグは解除されます。
+- 自動送信が3ページ連続すると途中退出として判定され、自動決定に切り替わります。
+- 途中退出判定後は、早期終了判定の対象になります。
 
 ### セッションプロファイル
 
@@ -39,8 +39,8 @@ otree devserver 0.0.0.0:8000
 - `pggp_transfer_free` -> treatment `transfer_free`
 - `pggp_transfer_cost` -> treatment `transfer_cost`
 
-現在のセッションフローは `game` から直接開始します（`app_sequence=['game', 'survey']`）。
-旧 `introduction` アプリは使用していません。
+現在のセッションフローは `introduction` でルール説明と理解度チェックを完了した後、`game` に入ります（`app_sequence=['introduction', 'game', 'survey']`）。
+`game` の最初の待機ページでは、ルール説明を完了して到着した順に5人ずつグループを作成します。
 
 ### SESSION_CONFIG_DEFAULTS
 
@@ -53,11 +53,12 @@ otree devserver 0.0.0.0:8000
 | `num_demo_participants` | `5` | デモ参加者数。 |
 | `enable_timeout_autoplay` | `True` | タイムアウト時の自動進行。 |
 | `per_target_dp_limit` | `10` | 減点フェーズの各対象減点上限。未設定なら `deduction_points` を使用。 |
-| `decision_timeout_seconds` | `60` | 意思決定ページの制限時間。 |
+| `decision_timeout_seconds` | `30` | 意思決定ページの制限時間。 |
 | `dropout_timeout_pages` | `3` | タイムアウトが連続した回数の閾値。到達すると「途中退出の疑い」として警告フラグが立つ。 |
 | `early_stop_min_rounds` | `14` | 早期終了が可能になる最小ラウンド数。 |
 | `early_stop_dropout_count` | `1` | 上記フラグが立った参加者数がこの値以上になった場合、最小ラウンド条件を満たしていれば早期終了を発動。 |
 | `non_decision_timeout_seconds` | `60` | 非意思決定ページの制限時間。 |
+| `group_by_arrival_time` | `True` | ルール説明を完了した参加者から順に、`game` 開始時にグループ化する。 |
 
 ### セッション個別パラメータ
 
@@ -67,7 +68,7 @@ otree devserver 0.0.0.0:8000
 | --- | --- |
 | `name` | oTree セッション名。 |
 | `display_name` | 管理画面の表示名。 |
-| `app_sequence` | アプリ実行順（`['game', 'survey']`）。 |
+| `app_sequence` | アプリ実行順（`['introduction', 'game', 'survey']`）。 |
 | `num_demo_participants` | このセッションのデモ人数。 |
 | `players_per_group` | グループ人数。 |
 | `num_rounds` | ラウンド数。 |
@@ -83,7 +84,8 @@ otree devserver 0.0.0.0:8000
 | `practice_rounds` | 練習ラウンド数（現在は `0`）。 |
 | `treatment_name` | 分岐や表示に使用する識別名。 |
 | `use_browser_bots` | ブラウザボット自動進行。 |
-| `browser_bot_stop_round` | ボット停止ラウンド。 |
+| `browser_bot_stop_stage` | 手動操作に切り替える段階。`introduction` / `game` / `survey`。 |
+| `browser_bot_stop_round` | `browser_bot_stop_stage='game'` のときに停止するゲームラウンド。 |
 
 ### グローバル設定
 
@@ -115,8 +117,17 @@ otree test pggp_transfer_cost
 ```
 
 これらのテストは固定値（投資・減点・移譲）を送信します。コード修正後にフローが正常に完了するか確認してください。
+20人で、ルール説明の完了タイミングをbotごとにランダムにずらして、5人ずつ到着順でグループ化されることを確認する場合は以下を実行します。
 
-## 特定ラウンドへ直接移動
+```bash
+otree test pggp_transfer_free 20
+```
 
-管理画面の `Sessions` で `Create new session` を選択し、`Configure session` で `use_browser_bots` を有効化します。既定ではラウンド3にジャンプしますが変更可能です。セッション作成後、各参加者ページが自動で該当ラウンドへ進行します。
-`use_browser_bots` が有効な場合、browser bot ではラウンド開始前の説明ページと理解度チェックページを自動でスキップします。
+botテストは通常、成功時には詳細なページ送信ログを出さず、失敗時にエラー内容を表示します。
+
+## Browser Bot の手動切り替え
+
+管理画面の `Sessions` で `Create new session` を選択し、`Configure session` で `use_browser_bots` を有効化して、`browser_bot_stop_stage` を選択します。
+`browser_bot_stop_stage='introduction'` の場合、参加者は introduction app から手動操作を開始します。
+`browser_bot_stop_stage='game'` の場合、browser bot は introduction を完了し、game app の `browser_bot_stop_round` で停止します。
+`browser_bot_stop_stage='survey'` の場合、browser bot は introduction と game を完了し、survey app で停止します。

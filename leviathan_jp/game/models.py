@@ -29,7 +29,8 @@ class Constants(BaseConstants):
 class Subsession(BaseSubsession):
     def creating_session(self):
         # session.config から実験設定を読み込み、settings.py で柔軟に変更可能にする
-        self.group_randomly()
+        if not self.session.config.get('group_by_arrival_time', True):
+            self.group_randomly()
         players = self.get_players()
 
         for p in players:
