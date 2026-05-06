@@ -616,6 +616,11 @@
         white-space: nowrap;
     }
 
+    .dropout-warning-actions {
+        display: flex;
+        justify-content: center;
+    }
+
     .round-timer-fixed {
         position: fixed;
         left: 0;
@@ -696,6 +701,11 @@
         <div class="dropout-warning-text">
             規定回数のタイムアウトが発生したため、<br>
             この参加者は離脱として扱われ、自動決定で進行します。
+        </div>
+        <div class="dropout-warning-actions">
+            <button type="button" class="btn" id="dropout-warning-dismiss">
+                通常参加に戻る
+            </button>
         </div>
     </div>
 </div>
@@ -910,6 +920,15 @@
         }
         if (warningEl && warningActive) {
             warningEl.classList.add('is-active');
+        }
+        var warningDismiss = document.getElementById('dropout-warning-dismiss');
+        if (warningDismiss && warningEl) {
+            warningDismiss.addEventListener('click', function () {
+                warningEl.classList.remove('is-active');
+                if (typeof liveSend === 'function') {
+                    liveSend({dismiss_dropout_warning: true});
+                }
+            });
         }
         document.querySelectorAll('[required]').forEach(function(el) {
             el.addEventListener('invalid', function () {

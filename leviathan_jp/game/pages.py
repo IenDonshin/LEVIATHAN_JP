@@ -238,6 +238,47 @@ def build_history_rounds(player):
     return rounds
 
 
+def _mark_dropout(player, timeout_count=None):
+    if timeout_count is None:
+        timeout_count = player.participant.vars.get('consecutive_timeouts', 0)
+    player.participant.vars['consecutive_timeouts'] = timeout_count
+    player.participant.vars['auto_play'] = True
+    player.participant.vars['dropout_warning_active'] = True
+    player.participant.vars['dropout_confirmed'] = True
+
+
+def _reset_dropout_state(player):
+    player.participant.vars['consecutive_timeouts'] = 0
+    player.participant.vars['auto_play'] = False
+    player.participant.vars['dropout_warning_active'] = False
+    player.participant.vars['dropout_confirmed'] = False
+
+
+def _auto_advance_timeout_seconds(player):
+    value = player.session.config.get('auto_advance_timeout_seconds', 1)
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        value = 1
+    return max(1, value)
+
+
+def _page_timeout_seconds(player, config_key, default_seconds):
+    if not player.session.config.get('enable_timeout_autoplay', True):
+        return None
+    if player.participant.vars.get('dropout_confirmed') or player.participant.vars.get('auto_play'):
+        return _auto_advance_timeout_seconds(player)
+    return player.session.config.get(config_key, default_seconds)
+
+
+def _decision_timeout_seconds(player):
+    return _page_timeout_seconds(player, 'decision_timeout_seconds', 60)
+
+
+def _non_decision_timeout_seconds(player):
+    return _page_timeout_seconds(player, 'non_decision_timeout_seconds', 10)
+
+
 class BasePage(Page):
     @staticmethod
     def js_vars(player):
@@ -253,13 +294,7 @@ class BasePage(Page):
         if not isinstance(data, dict):
             return
         if data.get('dismiss_dropout_warning'):
-            # Dropout is now a confirmed state and cannot be manually cleared.
-            player.participant.vars['dropout_warning_active'] = bool(
-                player.participant.vars.get('dropout_confirmed')
-            )
-            player.participant.vars['auto_play'] = bool(
-                player.participant.vars.get('dropout_confirmed')
-            )
+            _reset_dropout_state(player)
 
 
 def _force_manual_after_bot_stop_round(player):
@@ -438,42 +473,34 @@ class Contribution(BasePage):
 
     @staticmethod
     def get_timeout_seconds(player):
-        if not player.session.config.get('enable_timeout_autoplay', True):
-            return None
-        return player.session.config.get('decision_timeout_seconds', 60)
+        return _decision_timeout_seconds(player)
 
     @staticmethod
-    def _update_timeout_streak(player, timeout_happened):
+    def _update_timeout_streak(player, timeout_happened, decision_page=False):
         if not player.session.config.get('enable_timeout_autoplay', True):
-            player.participant.vars['consecutive_timeouts'] = 0
-            player.participant.vars['auto_play'] = False
-            player.participant.vars['dropout_warning_active'] = False
-            player.participant.vars['dropout_confirmed'] = False
+            _reset_dropout_state(player)
             return
         if player.participant.vars.get('dropout_confirmed'):
             player.participant.vars['auto_play'] = True
             player.participant.vars['dropout_warning_active'] = True
             return
-        threshold = player.session.config.get('dropout_timeout_pages', 3)
-        if threshold is None or threshold <= 0:
+
+        dropout_threshold = player.session.config.get('dropout_timeout_pages', 3)
+        if dropout_threshold is None or dropout_threshold <= 0:
             if not timeout_happened:
-                player.participant.vars['consecutive_timeouts'] = 0
-            player.participant.vars['auto_play'] = False
-            player.participant.vars['dropout_warning_active'] = False
-            player.participant.vars['dropout_confirmed'] = False
+                _reset_dropout_state(player)
             return
+
         if timeout_happened:
             streak = player.participant.vars.get('consecutive_timeouts', 0) + 1
             player.participant.vars['consecutive_timeouts'] = streak
-            if streak >= threshold:
-                player.participant.vars['auto_play'] = True
-                player.participant.vars['dropout_warning_active'] = True
-                player.participant.vars['dropout_confirmed'] = True
-        else:
-            player.participant.vars['consecutive_timeouts'] = 0
             player.participant.vars['auto_play'] = False
             player.participant.vars['dropout_warning_active'] = False
             player.participant.vars['dropout_confirmed'] = False
+            if streak >= dropout_threshold:
+                _mark_dropout(player, streak)
+        else:
+            _reset_dropout_state(player)
 
     @staticmethod
     def vars_for_template(player):
@@ -519,7 +546,7 @@ class Contribution(BasePage):
 
     @staticmethod
     def before_next_page(player, timeout_happened):
-        Contribution._update_timeout_streak(player, timeout_happened)
+        Contribution._update_timeout_streak(player, timeout_happened, decision_page=True)
         endowment = player.session.config.get('endowment', Constants.endowment)
         available = player.available_endowment if player.available_endowment is not None else c(endowment)
         if timeout_happened:
@@ -565,9 +592,7 @@ class ContributionWaitPage(WaitPage):
 class ContributionResult(BasePage):
     @staticmethod
     def get_timeout_seconds(player):
-        if not player.session.config.get('enable_timeout_autoplay', True):
-            return None
-        return player.session.config.get('non_decision_timeout_seconds', 10)
+        return _non_decision_timeout_seconds(player)
 
     @staticmethod
     def before_next_page(player, timeout_happened):
@@ -651,9 +676,7 @@ class PowerTransfer(BasePage):
 
     @staticmethod
     def get_timeout_seconds(player):
-        if not player.session.config.get('enable_timeout_autoplay', True):
-            return None
-        return player.session.config.get('decision_timeout_seconds', 60)
+        return _decision_timeout_seconds(player)
 
     @staticmethod
     def is_displayed(player):
@@ -785,7 +808,7 @@ class PowerTransfer(BasePage):
 
     @staticmethod
     def before_next_page(player, timeout_happened):
-        Contribution._update_timeout_streak(player, timeout_happened)
+        Contribution._update_timeout_streak(player, timeout_happened, decision_page=True)
         session = player.session
         transfer_unit = session.config.get("punishment_transfer_unit", 0.1)
         transfer_fields = [
@@ -894,9 +917,7 @@ class PowerTransferWait(WaitPage):
 class PowerTransferResult(BasePage):
     @staticmethod
     def get_timeout_seconds(player):
-        if not player.session.config.get('enable_timeout_autoplay', True):
-            return None
-        return player.session.config.get('non_decision_timeout_seconds', 10)
+        return _non_decision_timeout_seconds(player)
 
     @staticmethod
     def before_next_page(player, timeout_happened):
@@ -987,9 +1008,7 @@ class Punishment(BasePage):
 
     @staticmethod
     def get_timeout_seconds(player):
-        if not player.session.config.get('enable_timeout_autoplay', True):
-            return None
-        return player.session.config.get('decision_timeout_seconds', 60)
+        return _decision_timeout_seconds(player)
 
     @staticmethod
     def get_form_fields(player):
@@ -1089,7 +1108,7 @@ class Punishment(BasePage):
 
     @staticmethod
     def before_next_page(player, timeout_happened):
-        Contribution._update_timeout_streak(player, timeout_happened)
+        Contribution._update_timeout_streak(player, timeout_happened, decision_page=True)
         punishment_cost = player.session.config.get('punishment_cost', 1)
         total_punishment = 0
         for i in range(1, Constants.players_per_group + 1):
@@ -1138,9 +1157,7 @@ class PunishmentWaitPage(WaitPage):
 class PunishmentResult(BasePage):
     @staticmethod
     def get_timeout_seconds(player):
-        if not player.session.config.get('enable_timeout_autoplay', True):
-            return None
-        return player.session.config.get('non_decision_timeout_seconds', 10)
+        return _non_decision_timeout_seconds(player)
 
     @staticmethod
     def is_displayed(player):
@@ -1299,9 +1316,7 @@ class PunishmentResult(BasePage):
 class RoundResult(BasePage):
     @staticmethod
     def get_timeout_seconds(player):
-        if not player.session.config.get('enable_timeout_autoplay', True):
-            return None
-        return player.session.config.get('non_decision_timeout_seconds', 10)
+        return _non_decision_timeout_seconds(player)
 
     @staticmethod
     def before_next_page(player, timeout_happened):
@@ -1391,9 +1406,7 @@ class RoundResult(BasePage):
 class FinalResult(BasePage):
     @staticmethod
     def get_timeout_seconds(player):
-        if not player.session.config.get('enable_timeout_autoplay', True):
-            return None
-        return player.session.config.get('non_decision_timeout_seconds', 10)
+        return _non_decision_timeout_seconds(player)
 
     @staticmethod
     def before_next_page(player, timeout_happened):

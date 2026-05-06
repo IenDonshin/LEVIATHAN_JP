@@ -35,6 +35,7 @@ SESSION_CONFIG_DEFAULTS = dict(
     per_target_dp_limit=10,
     decision_timeout_seconds=30,
     dropout_timeout_pages=3,
+    auto_advance_timeout_seconds=1,
     early_stop_min_rounds=14,
     early_stop_dropout_count=1,
     non_decision_timeout_seconds=30,
